@@ -1,0 +1,518 @@
+import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+const PORT = process.env.PORT || 5000;
+const ODDS_API_KEY      = process.env.ODDS_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ODDS_BASE         = 'https://api.the-odds-api.com/v4';
+const CACHE_FILE        = path.join(__dirname, 'ai-cache.json');
+const AI_TTL            = 3 * 60 * 60 * 1000; // 3 hours
+
+if (!ODDS_API_KEY)      console.error('⚠️  ODDS_API_KEY missing');
+if (!ANTHROPIC_API_KEY) console.error('⚠️  ANTHROPIC_API_KEY missing');
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE-BASED AI CACHE — persists across server restarts
+// ═══════════════════════════════════════════════════════════════════
+const aiCache = {};
+
+function loadAICache() {
+  try {
+    const raw  = fs.readFileSync(CACHE_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    const now  = Date.now();
+    let loaded = 0;
+    for (const [k, v] of Object.entries(data)) {
+      if (now - v.ts < AI_TTL) { aiCache[k] = v; loaded++; }
+    }
+    console.log(`📦 Loaded ${loaded} cached AI analyses from disk`);
+  } catch (e) { console.log('No AI cache file yet — starting fresh'); }
+}
+
+function saveAICache() {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(aiCache), 'utf8');
+  } catch (e) { console.error('Failed to save AI cache:', e.message); }
+}
+
+loadAICache(); // Load on startup
+
+// ═══════════════════════════════════════════════════════════════════
+// RATE LIMITING
+// ═══════════════════════════════════════════════════════════════════
+const rateLimitStore = new Map();
+const RATE_LIMIT  = 30;
+const RATE_WINDOW = 60 * 1000;
+
+function rateLimit(req, res, next) {
+  const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const rec = rateLimitStore.get(ip) || { count: 0, start: now };
+  if (now - rec.start > RATE_WINDOW) { rec.count = 1; rec.start = now; }
+  else rec.count++;
+  rateLimitStore.set(ip, rec);
+  if (rateLimitStore.size > 1000) {
+    for (const [k, v] of rateLimitStore) {
+      if (now - v.start > RATE_WINDOW) rateLimitStore.delete(k);
+    }
+  }
+  if (rec.count > RATE_LIMIT) return res.status(429).json({ error: 'Too many requests' });
+  next();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ODDS CACHE
+// ═══════════════════════════════════════════════════════════════════
+const oddsCache = {};
+const ODDS_TTL  = 5 * 60 * 1000;
+
+function isFresh(cache, key, ttl) {
+  return cache[key] && (Date.now() - cache[key].ts < ttl);
+}
+
+async function fetchOdds(sport) {
+  if (isFresh(oddsCache, sport, ODDS_TTL)) return oddsCache[sport].data;
+  try {
+    const url = `${ODDS_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=au&markets=h2h&oddsFormat=decimal&dateFormat=iso`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Odds API ${res.status}`);
+    const data = await res.json();
+    oddsCache[sport] = { data, ts: Date.now() };
+    return data;
+  } catch (err) {
+    console.error(`fetchOdds(${sport}):`, err.message);
+    return oddsCache[sport]?.data || [];
+  }
+}
+
+async function fetchAllOdds() {
+  const sportMap = {
+    afl:       'aussierules_afl',
+    nrl:       'rugbyleague_nrl',
+    soccer_al: 'soccer_australia_aleague',
+    soccer_epl:'soccer_epl',
+    ufc:       'mma_mixed_martial_arts',
+    boxing:    'boxing_boxing',
+  };
+  const results = {};
+  for (const [key, apiSport] of Object.entries(sportMap)) {
+    results[key] = await fetchOdds(apiSport);
+  }
+  return results;
+}
+
+function normaliseEvent(ev, sportLabel) {
+  const bookmakers = ev.bookmakers || [];
+  const bookie = bookmakers.find(b => b.key === 'sportsbet')
+    || bookmakers.find(b => b.key === 'tab')
+    || bookmakers[0];
+  if (!bookie) return null;
+  const market = bookie.markets?.find(m => m.key === 'h2h');
+  if (!market || !market.outcomes?.length) return null;
+
+  const outcomes = market.outcomes;
+  const home = outcomes[0];
+  const away = outcomes[1];
+  const draw = outcomes.find(o => o.name === 'Draw');
+
+  const TZ = 'Australia/Brisbane';
+  const commence = new Date(ev.commence_time);
+  const now = new Date();
+  const diffHrs = (commence - now) / 3600000;
+
+  const commenceDateStr = commence.toLocaleDateString('en-AU', { timeZone: TZ });
+  const todayDateStr    = now.toLocaleDateString('en-AU', { timeZone: TZ });
+  const tomorrowDate    = new Date(now); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowDateStr = tomorrowDate.toLocaleDateString('en-AU', { timeZone: TZ });
+  const timeStr         = commence.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+  const days            = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayInBrisbane   = new Date(commence.toLocaleString('en-AU', { timeZone: TZ })).getDay();
+
+  let timeLabel;
+  if (diffHrs < 0)                              timeLabel = 'In Progress';
+  else if (diffHrs < 1)                         timeLabel = `${Math.round(diffHrs * 60)}m`;
+  else if (commenceDateStr === todayDateStr)     timeLabel = `Today ${timeStr}`;
+  else if (commenceDateStr === tomorrowDateStr)  timeLabel = `Tomorrow ${timeStr}`;
+  else                                          timeLabel = `${days[dayInBrisbane]} ${timeStr}`;
+
+  const homeImpl  = home ? (1 / home.price) : 0;
+  const awayImpl  = away ? (1 / away.price) : 0;
+  const overround = homeImpl + awayImpl + (draw ? 1 / draw.price : 0);
+  const homeFair  = homeImpl / overround;
+  const awayFair  = awayImpl / overround;
+  const homeEdge  = home ? (home.price * homeFair - 1) : -1;
+  const awayEdge  = away ? (away.price * awayFair - 1) : -1;
+
+  return {
+    id: ev.id, sport: sportLabel,
+    home: home?.name || ev.home_team,
+    away: away?.name || ev.away_team,
+    homeOdds: home?.price ? parseFloat(home.price.toFixed(2)) : null,
+    awayOdds: away?.price ? parseFloat(away.price.toFixed(2)) : null,
+    drawOdds: draw?.price ? parseFloat(draw.price.toFixed(2)) : null,
+    time: timeLabel, commenceTime: ev.commence_time,
+    venue: '', comp: ev.sport_title || sportLabel,
+    homeRecord: '', awayRecord: '',
+    homeEdge, awayEdge, bookmaker: bookie.title,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AI ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════════════════════
+const aiQueue = [];
+let   aiBusy  = false;
+
+async function analyseMatch(ev) {
+  if (isFresh(aiCache, ev.id, AI_TTL)) return aiCache[ev.id].data;
+  if (!ANTHROPIC_API_KEY) return null;
+
+  const prompt = `You are an expert sports betting analyst with deep knowledge of Australian sports.
+Analyse this ${ev.sport} match and provide a betting recommendation.
+
+MATCH: ${ev.home} vs ${ev.away}
+COMPETITION: ${ev.comp}
+ODDS: ${ev.home} @ ${ev.homeOdds} | ${ev.away} @ ${ev.awayOdds}${ev.drawOdds ? ` | Draw @ ${ev.drawOdds}` : ''}
+KICKOFF: ${ev.time}
+
+Respond ONLY with a valid JSON object, no markdown, no backticks:
+{
+  "confidence": <number 45-90>,
+  "recommendation": "<must be exactly '${ev.home}' or '${ev.away}'${ev.drawOdds ? " or 'Draw'" : ''}>",
+  "betType": "<Win or Head to Head>",
+  "recommendedOdds": "<odds as string>",
+  "valueBet": <true or false>,
+  "summary": "<2 sentence match overview>",
+  "keyFactors": [
+    {"icon": "📊", "label": "Recent Form", "value": "<brief>"},
+    {"icon": "🏟️", "label": "Conditions", "value": "<brief>"},
+    {"icon": "📈", "label": "Head to Head", "value": "<brief>"},
+    {"icon": "💰", "label": "Market Value", "value": "<brief>"},
+    {"icon": "⚠️", "label": "Key Risk", "value": "<brief>"}
+  ],
+  "reasoning": "<2-3 sentence explanation>"
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Anthropic ${res.status}: ${errText.slice(0,200)}`);
+    }
+    const data  = await res.json();
+    const text  = data.content?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const analysis = JSON.parse(clean);
+    aiCache[ev.id] = { data: analysis, ts: Date.now() };
+    saveAICache(); // Persist to disk immediately
+    console.log(`✅ AI analysed: ${ev.home} vs ${ev.away} → ${analysis.recommendation} (${analysis.confidence}%)`);
+    return analysis;
+  } catch (err) {
+    console.error(`❌ AI failed for ${ev.home} vs ${ev.away}:`, err.message);
+    return null;
+  }
+}
+
+async function processAIQueue() {
+  if (aiBusy || aiQueue.length === 0) return;
+  aiBusy = true;
+  while (aiQueue.length > 0) {
+    const ev = aiQueue.shift();
+    if (!isFresh(aiCache, ev.id, AI_TTL)) {
+      await analyseMatch(ev);
+      await new Promise(r => setTimeout(r, 800));
+    }
+  }
+  aiBusy = false;
+}
+
+function queueAIAnalysis(events) {
+  if (!ANTHROPIC_API_KEY) return;
+  const toAnalyse = events
+    .filter(ev => !isFresh(aiCache, ev.id, AI_TTL))
+    .slice(0, 10);
+  for (const ev of toAnalyse) {
+    if (!aiQueue.find(q => q.id === ev.id)) aiQueue.push(ev);
+  }
+  processAIQueue();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECURITY MIDDLEWARE
+// ═══════════════════════════════════════════════════════════════════
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src https://fonts.gstatic.com; " +
+    "img-src 'self' data:; " +
+    "connect-src 'self';"
+  );
+  next();
+});
+
+app.use((req, res, next) => {
+  const origin  = req.headers.origin;
+  const allowed = ['https://sportsiq.replit.app', 'http://localhost:5000'];
+  if (!origin || allowed.includes(origin)) {
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  }
+  next();
+});
+
+app.use(express.json({ limit: '10kb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ═══════════════════════════════════════════════════════════════════
+// API ROUTES
+// ═══════════════════════════════════════════════════════════════════
+app.get('/api/odds', rateLimit, async (req, res) => {
+  try {
+    const raw = await fetchAllOdds();
+    const sportLabels = {
+      afl: 'AFL', nrl: 'NRL',
+      soccer_al: 'Soccer', soccer_epl: 'Soccer',
+      ufc: 'UFC', boxing: 'Boxing',
+    };
+
+    const events = [];
+    for (const [key, evList] of Object.entries(raw)) {
+      for (const ev of (evList || [])) {
+        const norm = normaliseEvent(ev, sportLabels[key]);
+        if (!norm) continue;
+        const ai = aiCache[norm.id]?.data || null;
+        if (ai) {
+          norm.confidence = ai.confidence;
+          norm.pick       = ai.recommendation;
+          norm.valueBet   = ai.valueBet;
+          norm.aiAnalysis = ai;
+          norm.aiReady    = true;
+        } else {
+          norm.confidence = Math.min(95, Math.max(45, Math.round(
+            50 + Math.max(norm.homeEdge, norm.awayEdge) * 100
+          )));
+          norm.pick     = norm.homeEdge >= norm.awayEdge ? norm.home : norm.away;
+          norm.valueBet = Math.max(norm.homeEdge, norm.awayEdge) > 0.03;
+          norm.aiReady  = false;
+        }
+        events.push(norm);
+      }
+    }
+
+    events.sort((a, b) => new Date(a.commenceTime) - new Date(b.commenceTime));
+    queueAIAnalysis(events);
+    res.json({ success: true, events, count: events.length });
+  } catch (err) {
+    console.error('Odds error:', err.message);
+    res.status(500).json({ success: false, error: 'Failed to load odds' });
+  }
+});
+
+app.post('/api/analyse', rateLimit, async (req, res) => {
+  if (!ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AI not configured' });
+  const { home, away, sport, homeOdds, awayOdds, drawOdds, comp, venue, context } = req.body;
+  if (!home || !away || !sport) return res.status(400).json({ error: 'home, away and sport required' });
+  const ev = {
+    id: `manual-${Date.now()}`,
+    home, away, sport,
+    homeOdds: parseFloat(homeOdds) || null,
+    awayOdds: parseFloat(awayOdds) || null,
+    drawOdds: parseFloat(drawOdds) || null,
+    comp: comp || sport, time: 'Manual',
+  };
+  try {
+    const analysis = await analyseMatch(ev);
+    if (!analysis) throw new Error('Empty response');
+    res.json({ success: true, analysis });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Analysis failed — try again' });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    aiEnabled: !!ANTHROPIC_API_KEY,
+    aiCached: Object.keys(aiCache).length,
+    aiQueued: aiQueue.length,
+    time: new Date().toISOString(),
+  });
+});
+
+app.use('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ error: 'Something went wrong' });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTH & BETS — file-based server-side storage
+// ═══════════════════════════════════════════════════════════════════
+import crypto from 'crypto';
+
+const USERS_FILE = path.join(__dirname, 'users.json');
+const BETS_FILE  = path.join(__dirname, 'bets.json');
+
+function loadJSON(file, def) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { return def; }
+}
+function saveJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// users.json: { username: { pinHash, salt, avatar, color, sport, createdAt } }
+// bets.json:  { username: [ ...bets ] }
+const users = loadJSON(USERS_FILE, {});
+const betsDB = loadJSON(BETS_FILE, {});
+
+function hashPin(pin, salt) {
+  return crypto.pbkdf2Sync(pin, salt, 10000, 32, 'sha256').toString('hex');
+}
+function genSalt() { return crypto.randomBytes(16).toString('hex'); }
+function genToken() { return crypto.randomBytes(32).toString('hex'); }
+
+// In-memory session tokens: { token: { username, expires } }
+const sessions = {};
+const SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function createSession(username) {
+  const token = genToken();
+  sessions[token] = { username, expires: Date.now() + SESSION_TTL };
+  return token;
+}
+
+function getSession(token) {
+  if (!token) return null;
+  const s = sessions[token];
+  if (!s) return null;
+  if (Date.now() > s.expires) { delete sessions[token]; return null; }
+  return s.username;
+}
+
+function authMiddleware(req, res, next) {
+  const token = req.headers['x-session-token'] || req.query.token;
+  const username = getSession(token);
+  if (!username) return res.status(401).json({ error: 'Not authenticated' });
+  req.username = username;
+  next();
+}
+
+const AVATARS = ['🎯','🔥','⚡','💰','🏆','🦊','🐆','🌟','🎲','🃏'];
+const COLORS  = ['#f0b429','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f97316','#e8314a','#00c85a','#f59e0b'];
+
+// Sign up
+app.post('/api/auth/signup', (req, res) => {
+  let { username, pin, sport } = req.body;
+  if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
+  username = username.toLowerCase().trim();
+  if (username.length < 2 || username.length > 20) return res.status(400).json({ error: 'Username must be 2-20 characters' });
+  if (!/^[a-z0-9_]+$/.test(username)) return res.status(400).json({ error: 'Username can only contain letters, numbers and underscores' });
+  if (!/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+  if (users[username]) return res.status(409).json({ error: 'Username already taken' });
+
+  const salt    = genSalt();
+  const pinHash = hashPin(pin, salt);
+  const idx     = Object.keys(users).length % AVATARS.length;
+  users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], createdAt: Date.now() };
+  betsDB[username] = [];
+  saveJSON(USERS_FILE, users);
+  saveJSON(BETS_FILE, betsDB);
+
+  const token   = createSession(username);
+  const profile = { username, avatar: users[username].avatar, color: users[username].color, sport: users[username].sport };
+  res.json({ success: true, token, profile });
+});
+
+// Sign in
+app.post('/api/auth/signin', (req, res) => {
+  let { username, pin } = req.body;
+  if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
+  username = username.toLowerCase().trim();
+  const user = users[username];
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+  const pinHash = hashPin(pin, user.salt);
+  if (pinHash !== user.pinHash) return res.status(401).json({ error: 'Incorrect PIN' });
+
+  const token   = createSession(username);
+  const profile = { username, avatar: user.avatar, color: user.color, sport: user.sport };
+  res.json({ success: true, token, profile });
+});
+
+// Get my profile
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+  const user = users[req.username];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ username: req.username, avatar: user.avatar, color: user.color, sport: user.sport });
+});
+
+// Sign out
+app.post('/api/auth/signout', authMiddleware, (req, res) => {
+  const token = req.headers['x-session-token'];
+  if (token) delete sessions[token];
+  res.json({ success: true });
+});
+
+// Get my bets
+app.get('/api/bets', authMiddleware, (req, res) => {
+  res.json({ success: true, bets: betsDB[req.username] || [] });
+});
+
+// Save all my bets (full replace)
+app.post('/api/bets', authMiddleware, (req, res) => {
+  const { bets: newBets } = req.body;
+  if (!Array.isArray(newBets)) return res.status(400).json({ error: 'bets must be an array' });
+  betsDB[req.username] = newBets;
+  saveJSON(BETS_FILE, betsDB);
+  res.json({ success: true });
+});
+
+// Leaderboard — public, shows all users' stats
+app.get('/api/leaderboard', (req, res) => {
+  const entries = Object.keys(users).map(u => {
+    const ub = betsDB[u] || [];
+    return {
+      username: u,
+      avatar:   users[u].avatar,
+      color:    users[u].color,
+      bets:     ub,
+    };
+  });
+  res.json({ success: true, entries });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`EdgeIQ running on port ${PORT}`);
+  console.log(`Odds API:      ${ODDS_API_KEY      ? '✓' : '✗ MISSING'}`);
+  console.log(`Anthropic API: ${ANTHROPIC_API_KEY ? '✓' : '✗ MISSING'}`);
+  console.log(`AI cache:      ${Object.keys(aiCache).length} entries loaded`);
+});
