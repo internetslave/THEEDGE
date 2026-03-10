@@ -2,14 +2,193 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
+const ODDS_API_KEY = process.env.ODDS_API_KEY;
+const ODDS_BASE = 'https://api.the-odds-api.com/v4';
 
+// ── Cache to avoid hammering the API ──
+const cache = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function isFresh(key) {
+  return cache[key] && (Date.now() - cache[key].ts < CACHE_TTL);
+}
+
+async function fetchOdds(sport) {
+  if (isFresh(sport)) return cache[sport].data;
+  try {
+    const url = `${ODDS_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=au&markets=h2h&oddsFormat=decimal&dateFormat=iso`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    cache[sport] = { data, ts: Date.now() };
+    return data;
+  } catch (err) {
+    console.error(`Failed fetching ${sport}:`, err.message);
+    return cache[sport]?.data || [];
+  }
+}
+
+async function fetchAllOdds() {
+  const sportMap = {
+    afl:       'aussierules_afl',
+    nrl:       'rugbyleague_nrl',
+    soccer_al: 'soccer_australia_aleague',
+    soccer_epl:'soccer_epl',
+    ufc:       'mma_mixed_martial_arts',
+    boxing:    'boxing_boxing',
+  };
+
+  const results = {};
+  for (const [key, apiSport] of Object.entries(sportMap)) {
+    results[key] = await fetchOdds(apiSport);
+  }
+  return results;
+}
+
+function normaliseEvent(ev, sportLabel) {
+  const bookmakers = ev.bookmakers || [];
+  // Prefer Sportsbet, then TAB, then first available
+  const bookie = bookmakers.find(b => b.key === 'sportsbet')
+    || bookmakers.find(b => b.key === 'tab')
+    || bookmakers[0];
+
+  if (!bookie) return null;
+
+  const market = bookie.markets?.find(m => m.key === 'h2h');
+  if (!market || !market.outcomes?.length) return null;
+
+  const outcomes = market.outcomes;
+  const home = outcomes[0];
+  const away = outcomes[1];
+  const draw = outcomes.find(o => o.name === 'Draw');
+
+  const commence = new Date(ev.commence_time);
+  const now = new Date();
+  const diffMs = commence - now;
+  const diffHrs = diffMs / 3600000;
+
+  let timeLabel;
+  if (diffHrs < 0) timeLabel = 'In Progress';
+  else if (diffHrs < 1) timeLabel = `${Math.round(diffHrs * 60)}m`;
+  else if (diffHrs < 24) timeLabel = `Today ${commence.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Melbourne' })}`;
+  else {
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    timeLabel = `${days[commence.getDay()]} ${commence.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Melbourne' })}`;
+  }
+
+  // Simple value detection: implied probability vs fair odds
+  const homeImpl = home ? (1 / home.price) : 0;
+  const awayImpl = away ? (1 / away.price) : 0;
+  const overround = homeImpl + awayImpl + (draw ? 1 / draw.price : 0);
+  const homeFair = homeImpl / overround;
+  const awayFair = awayImpl / overround;
+  const homeEdge = home ? (home.price * homeFair - 1) : -1;
+  const awayEdge = away ? (away.price * awayFair - 1) : -1;
+  const valueBet = Math.max(homeEdge, awayEdge) > 0.03;
+  const pick = homeEdge >= awayEdge ? home?.name : away?.name;
+  const confidence = Math.min(95, Math.max(45, Math.round(50 + Math.max(homeEdge, awayEdge) * 100)));
+
+  return {
+    id: ev.id,
+    sport: sportLabel,
+    home: home?.name || ev.home_team,
+    away: away?.name || ev.away_team,
+    homeOdds: home?.price ? parseFloat(home.price.toFixed(2)) : null,
+    awayOdds: away?.price ? parseFloat(away.price.toFixed(2)) : null,
+    drawOdds: draw?.price ? parseFloat(draw.price.toFixed(2)) : null,
+    time: timeLabel,
+    commenceTime: ev.commence_time,
+    venue: '',
+    comp: ev.sport_title || sportLabel,
+    homeRecord: '',
+    awayRecord: '',
+    confidence,
+    pick,
+    valueBet,
+    bookmaker: bookie.title,
+  };
+}
+
+// ── Middleware ──
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── API Routes ──
+app.get('/api/odds', async (req, res) => {
+  try {
+    const raw = await fetchAllOdds();
+    const sportLabels = {
+      afl: 'AFL', nrl: 'NRL',
+      soccer_al: 'Soccer', soccer_epl: 'Soccer',
+      ufc: 'UFC', boxing: 'Boxing',
+    };
+
+    const events = [];
+    for (const [key, evList] of Object.entries(raw)) {
+      const label = sportLabels[key];
+      for (const ev of (evList || [])) {
+        const norm = normaliseEvent(ev, label);
+        if (norm) events.push(norm);
+      }
+    }
+
+    // Sort by commence time
+    events.sort((a, b) => new Date(a.commenceTime) - new Date(b.commenceTime));
+
+    // Remaining requests from last fetch (use cached header if available)
+    res.json({ success: true, events, count: events.length, cached: Object.keys(cache).length > 0 });
+  } catch (err) {
+    console.error('Odds error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/odds/:sport', async (req, res) => {
+  const sportMap = {
+    afl: 'aussierules_afl',
+    nrl: 'rugbyleague_nrl',
+    soccer: 'soccer_australia_aleague',
+    epl: 'soccer_epl',
+    ufc: 'mma_mixed_martial_arts',
+    boxing: 'boxing_boxing',
+  };
+  const apiSport = sportMap[req.params.sport];
+  if (!apiSport) return res.status(400).json({ error: 'Unknown sport' });
+  const data = await fetchOdds(apiSport);
+  res.json({ success: true, events: data });
+});
+
+app.get('/api/sports', async (req, res) => {
+  try {
+    const url = `${ODDS_BASE}/sports/?apiKey=${ODDS_API_KEY}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'ok',
+    cached: Object.keys(cache).map(k => ({
+      sport: k,
+      age: Math.round((Date.now() - cache[k].ts) / 1000) + 's',
+      count: cache[k].data?.length || 0,
+    }))
+  });
+});
+
+// ── Serve frontend ──
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`EdgeIQ running on port ${PORT}`);
+  console.log(`Odds API key: ${ODDS_API_KEY ? '✓ loaded' : '✗ MISSING'}`);
 });
