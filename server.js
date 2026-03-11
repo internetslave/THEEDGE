@@ -9,11 +9,15 @@ const app       = express();
 const PORT      = process.env.PORT || 5000;
 const ODDS_API_KEY      = process.env.ODDS_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const RACING_API_USER   = process.env.RACING_API_USER;
+const RACING_API_PASS   = process.env.RACING_API_PASS;
 const ODDS_BASE  = 'https://api.the-odds-api.com/v4';
+const RACING_BASE = 'https://api.theracingapi.com/v1';
 const AI_TTL     = 3 * 60 * 60 * 1000;
 
 if (!ODDS_API_KEY)      console.error('⚠️  ODDS_API_KEY missing');
 if (!ANTHROPIC_API_KEY) console.error('⚠️  ANTHROPIC_API_KEY missing');
+if (!RACING_API_USER || !RACING_API_PASS) console.warn('⚠️  RACING_API_USER / RACING_API_PASS missing — will use generated racing data');
 
 // ═══════════════════════════════════════════════════════════════════
 // JSONBIN.IO — single bin stores all data as { users, bets, tipping, comps }
@@ -184,44 +188,129 @@ async function fetchAllOdds() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RACING DATA (Greyhounds & Horse Racing)
+// RACING DATA — The Racing API (theracingapi.com) + fallback generator
 // ═══════════════════════════════════════════════════════════════════
-const RACING_VENUES = {
+const RACING_TTL = 15 * 60 * 1000;
+let racingCache = { data: null, ts: 0 };
+
+function racingAuthHeader() {
+  return 'Basic ' + Buffer.from(`${RACING_API_USER}:${RACING_API_PASS}`).toString('base64');
+}
+
+async function fetchRacingAPI(endpoint) {
+  const r = await fetch(`${RACING_BASE}${endpoint}`, {
+    headers: { 'Authorization': racingAuthHeader() }
+  });
+  if (!r.ok) throw new Error(`Racing API ${r.status}: ${r.statusText}`);
+  return r.json();
+}
+
+async function fetchRealRacingData() {
+  if (racingCache.data && Date.now() - racingCache.ts < RACING_TTL) return racingCache.data;
+
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  const [meetsToday, meetsTomorrow] = await Promise.all([
+    fetchRacingAPI(`/australia/meets?date=${today}`),
+    fetchRacingAPI(`/australia/meets?date=${tomorrow}`)
+  ]);
+
+  const allMeets = [...(meetsToday.meets || []), ...(meetsTomorrow.meets || [])];
+  const events = [];
+
+  const racePromises = allMeets.slice(0, 12).map(async (meet) => {
+    try {
+      const raceData = await fetchRacingAPI(`/australia/meets/${meet.meet_id}/races`);
+      return { meet, races: raceData.races || [] };
+    } catch (e) {
+      console.error(`Racing API: failed to fetch races for ${meet.course}:`, e.message);
+      return { meet, races: [] };
+    }
+  });
+
+  const meetResults = await Promise.all(racePromises);
+
+  for (const { meet, races } of meetResults) {
+    for (const race of races) {
+      if (race.is_trial || race.is_jump_out) continue;
+      if (!race.runners?.length) continue;
+
+      const runners = race.runners
+        .filter(r => r.horse && r.scratched !== 'true' && r.scratched !== true)
+        .map(r => {
+          const bestOdds = r.odds?.reduce((best, o) => {
+            const w = parseFloat(o.win_odds);
+            return (!isNaN(w) && w > 0 && (best === null || w < best)) ? w : best;
+          }, null) || null;
+          return {
+            name: r.horse,
+            odds: bestOdds || 99,
+            barrier: parseInt(r.draw) || 0,
+            jockey: r.jockey || '',
+            trainer: r.trainer || '',
+            form: r.form || '',
+            weight: r.weight || '',
+            age: r.age || '',
+            silk: r.silk_url || null
+          };
+        })
+        .sort((a, b) => a.odds - b.odds);
+
+      if (runners.length < 2) continue;
+
+      const distStr = race.distance || '';
+      const distNum = parseInt(distStr.replace(/[^0-9]/g, '')) || 0;
+      const raceNum = parseInt(race.race_number) || 0;
+
+      events.push({
+        id: `racing_${meet.meet_id}_R${raceNum}`,
+        sport_key: 'horse_racing_au',
+        home_team: runners[0].name,
+        away_team: `R${raceNum} ${meet.course}`,
+        commence_time: race.off_time || `${race.date}T00:00:00.000Z`,
+        venue: meet.course,
+        state: meet.state || '',
+        comp: race.class || race.race_group || 'Race',
+        raceName: race.race_name || '',
+        distance: distNum,
+        distanceLabel: distStr,
+        raceNumber: raceNum,
+        runners,
+        going: race.going || '',
+        prizeTotal: race.prize_total || '',
+        isRacing: true,
+        isLiveData: true
+      });
+    }
+  }
+
+  events.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
+  racingCache = { data: events, ts: Date.now() };
+  console.log(`Racing API: fetched ${events.length} races from ${allMeets.length} meets`);
+  return events;
+}
+
+// ── Fallback: generated racing data when API credentials are not configured ──
+const FALLBACK_VENUES = {
   greyhound: [
     { name: 'Sandown Park', state: 'VIC' }, { name: 'The Meadows', state: 'VIC' },
     { name: 'Wentworth Park', state: 'NSW' }, { name: 'Albion Park', state: 'QLD' },
-    { name: 'Cannington', state: 'WA' }, { name: 'Angle Park', state: 'SA' },
-    { name: 'Dapto', state: 'NSW' }, { name: 'Bulli', state: 'NSW' },
-    { name: 'Shepparton', state: 'VIC' }, { name: 'Ipswich', state: 'QLD' }
+    { name: 'Cannington', state: 'WA' }, { name: 'Angle Park', state: 'SA' }
   ],
   horse: [
     { name: 'Flemington', state: 'VIC' }, { name: 'Randwick', state: 'NSW' },
     { name: 'Eagle Farm', state: 'QLD' }, { name: 'Moonee Valley', state: 'VIC' },
-    { name: 'Rosehill', state: 'NSW' }, { name: 'Caulfield', state: 'VIC' },
-    { name: 'Doomben', state: 'QLD' }, { name: 'Ascot', state: 'WA' },
-    { name: 'Morphettville', state: 'SA' }, { name: 'Warwick Farm', state: 'NSW' }
+    { name: 'Rosehill', state: 'NSW' }, { name: 'Caulfield', state: 'VIC' }
   ]
 };
-
-const GREYHOUND_NAMES = [
-  'Midnight Storm','Flying Ace','Blazing Speed','Cool Operator','Star Chaser','Thunder Roll',
-  'Shadow Express','Fast Lane','Rapid Fire','Dark Comet','Lucky Strike','Jet Stream',
-  'Wild Card','Bold Move','Iron Will','Swift Justice','Prime Time','Hot Shot',
-  'Cash Flow','Power Play','Silver Bullet','Gold Rush','Night Hawk','Storm Chaser',
-  'Quick Draw','Top Notch','Fire Ball','Blue Diamond','Red Arrow','Flash Point'
-];
-
-const HORSE_NAMES = [
-  'Northern Meteor','Southern Cross','Golden Slipper','Diamond Rain','Storm Rider','Royal Flush',
-  'Midnight Run','Silver Lining','Thunder Bay','Crystal Clear','Iron Horse','Phoenix Rising',
-  'River Dance','Ocean King','Mountain Peak','Desert Storm','Valley Girl','Harbour Bridge',
-  'Autumn Gold','Spring Tide','Winter Star','Summer Breeze','Sunset Strip','Dawn Patrol',
-  'Celtic Prince','Viking Warrior','Roman Empire','Spartan Hero','Trojan Star','Persian King'
-];
-
-const RACE_COMPS = {
-  greyhound: ['Listed Race','Group 3','Group 2','Group 1','Maiden','Grade 5','Grade 4','Free For All'],
-  horse: ['Listed Race','Group 3','Group 2','Group 1','Maiden Plate','Benchmark 72','Benchmark 82','Class 3 Handicap']
+const FALLBACK_NAMES = {
+  greyhound: ['Midnight Storm','Flying Ace','Blazing Speed','Cool Operator','Star Chaser','Thunder Roll','Shadow Express','Fast Lane','Rapid Fire','Dark Comet','Lucky Strike','Jet Stream','Wild Card','Bold Move','Iron Will','Swift Justice'],
+  horse: ['Northern Meteor','Southern Cross','Golden Slipper','Diamond Rain','Storm Rider','Royal Flush','Midnight Run','Silver Lining','Thunder Bay','Crystal Clear','Iron Horse','Phoenix Rising','River Dance','Ocean King','Mountain Peak','Desert Storm']
+};
+const FALLBACK_COMPS = {
+  greyhound: ['Maiden','Grade 5','Grade 4','Free For All','Listed Race','Group 3'],
+  horse: ['Maiden Plate','Benchmark 72','Benchmark 82','Class 3 Handicap','Listed Race','Group 3']
 };
 
 function seededRandom(seed) {
@@ -234,11 +323,10 @@ function generateRacingData(type) {
   const daySeed = Math.floor(now.getTime() / (6 * 60 * 60 * 1000));
   const windowStart = new Date(daySeed * 6 * 60 * 60 * 1000);
   const rng = seededRandom(daySeed + (type === 'horse' ? 7777 : 3333));
-  const venues = RACING_VENUES[type];
-  const names = type === 'horse' ? HORSE_NAMES : GREYHOUND_NAMES;
-  const comps = RACE_COMPS[type];
+  const venues = FALLBACK_VENUES[type];
+  const names = FALLBACK_NAMES[type];
+  const comps = FALLBACK_COMPS[type];
   const events = [];
-
   const numVenues = 3 + Math.floor(rng() * 3);
   const usedVenues = [];
   for (let v = 0; v < numVenues; v++) {
@@ -256,36 +344,43 @@ function generateRacingData(type) {
         let name;
         do { name = names[Math.floor(rng() * names.length)]; } while (usedNames.has(name));
         usedNames.add(name);
-        const baseOdds = 1.5 + rng() * 20;
-        runners.push({ name, odds: Math.round(baseOdds * 100) / 100, barrier: i + 1 });
+        runners.push({ name, odds: Math.round((1.5 + rng() * 20) * 100) / 100, barrier: i + 1 });
       }
       runners.sort((a, b) => a.odds - b.odds);
-      const comp = comps[Math.floor(rng() * comps.length)];
-      const distance = type === 'greyhound'
-        ? [315, 395, 515, 595, 715][Math.floor(rng() * 5)]
-        : [1000, 1100, 1200, 1400, 1600, 2000, 2400, 3200][Math.floor(rng() * 8)];
-
+      const distance = type === 'greyhound' ? [315,395,515,595,715][Math.floor(rng()*5)] : [1000,1100,1200,1400,1600,2000,2400,3200][Math.floor(rng()*8)];
       events.push({
         id: `${type}_${venue.name.replace(/\s/g,'')}_R${r+1}_${daySeed}`,
         sport_key: type === 'horse' ? 'horse_racing_au' : 'greyhound_racing_au',
         home_team: runners[0].name,
         away_team: `${numRunners} runners`,
         commence_time: raceTime.toISOString(),
-        bookmakers: [{
-          key: 'tab_au',
-          title: 'TAB',
-          markets: [{ key: 'h2h', outcomes: runners.map(r => ({ name: r.name, price: r.odds })) }]
-        }],
-        venue: venue.name,
-        state: venue.state,
-        comp,
-        distance,
-        runners,
-        raceNumber: r + 1
+        venue: venue.name, state: venue.state,
+        comp: comps[Math.floor(rng() * comps.length)],
+        distance, raceNumber: r + 1, runners, isRacing: true, isLiveData: false
       });
     }
   }
   return events.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
+}
+
+async function getRacingEvents() {
+  let horseEvents;
+  if (RACING_API_USER && RACING_API_PASS) {
+    try {
+      horseEvents = await fetchRealRacingData();
+      if (!horseEvents.length) {
+        console.warn('Racing API returned no events, using horse fallback');
+        horseEvents = generateRacingData('horse');
+      }
+    } catch (e) {
+      console.error('Racing API failed, using horse fallback:', e.message);
+      horseEvents = generateRacingData('horse');
+    }
+  } else {
+    horseEvents = generateRacingData('horse');
+  }
+  const greyhoundEvents = generateRacingData('greyhound');
+  return [...horseEvents, ...greyhoundEvents];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -457,27 +552,20 @@ app.get('/api/odds', rateLimit, async (req, res) => {
       }
     }
 
-    const greyRaces = generateRacingData('greyhound');
-    for (const ev of greyRaces) {
+    const racingEvents = await getRacingEvents();
+    for (const ev of racingEvents) {
       const fav = ev.runners[0];
+      const racingSport = ev.sport_key === 'greyhound_racing_au' ? 'Greyhound' : 'Horse Racing';
       events.push({
-        id: ev.id, sport: 'Greyhound', home: fav.name, away: `R${ev.raceNumber} ${ev.venue}`,
+        id: ev.id, sport: racingSport, home: fav.name, away: `R${ev.raceNumber} ${ev.venue}`,
         homeOdds: fav.odds, awayOdds: ev.runners[1]?.odds || null, drawOdds: null,
         commenceTime: ev.commence_time, aiReady: false,
         venue: ev.venue, comp: ev.comp, distance: ev.distance,
-        raceNumber: ev.raceNumber, runners: ev.runners, isRacing: true
-      });
-    }
-
-    const horseRaces = generateRacingData('horse');
-    for (const ev of horseRaces) {
-      const fav = ev.runners[0];
-      events.push({
-        id: ev.id, sport: 'Horse Racing', home: fav.name, away: `R${ev.raceNumber} ${ev.venue}`,
-        homeOdds: fav.odds, awayOdds: ev.runners[1]?.odds || null, drawOdds: null,
-        commenceTime: ev.commence_time, aiReady: false,
-        venue: ev.venue, comp: ev.comp, distance: ev.distance,
-        raceNumber: ev.raceNumber, runners: ev.runners, isRacing: true
+        distanceLabel: ev.distanceLabel || `${ev.distance}m`,
+        raceNumber: ev.raceNumber, runners: ev.runners, isRacing: true,
+        isLiveData: ev.isLiveData || false,
+        raceName: ev.raceName || '', going: ev.going || '', prizeTotal: ev.prizeTotal || '',
+        state: ev.state || ''
       });
     }
 

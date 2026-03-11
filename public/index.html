@@ -1090,6 +1090,7 @@ function enrichEvent(ev) {
   const time = `${dayLabel} ${timeStr}`;
 
   if (ev.isRacing) {
+    const distLabel = ev.distanceLabel || (ev.distance ? `${ev.distance}m` : '');
     return {
       ...ev,
       time,
@@ -1098,9 +1099,9 @@ function enrichEvent(ev) {
       pick: ev.home,
       confidence: Math.round(50 + (1 / ev.homeOdds) * 40),
       valueBet: ev.homeOdds >= 3.0 && ev.homeOdds <= 8.0,
-      keyFactor: ev.distance ? `${ev.distance}m` : '',
+      keyFactor: distLabel,
       reasoning: '',
-      homeRecord: ev.runners ? `${ev.runners.length} runners · ${ev.distance}m` : '',
+      homeRecord: ev.runners ? `${ev.runners.length} runners · ${distLabel}` : '',
       awayRecord: ''
     };
   }
@@ -1943,8 +1944,11 @@ function openMatchModal(matchId) {
 
   // Header
   if (m.isRacing) {
-    document.getElementById('md-title').textContent = `R${m.raceNumber} ${m.venue}`;
-    document.getElementById('md-subtitle').textContent = `${m.time} · ${m.comp} · ${m.distance}m`;
+    document.getElementById('md-title').textContent = m.raceName || `R${m.raceNumber} ${m.venue}`;
+    const subtitleParts = [m.time, m.comp, m.distanceLabel || `${m.distance}m`];
+    if (m.going) subtitleParts.push(m.going);
+    if (m.prizeTotal) subtitleParts.push(`$${Number(m.prizeTotal).toLocaleString()}`);
+    document.getElementById('md-subtitle').textContent = subtitleParts.join(' · ');
   } else {
     document.getElementById('md-title').textContent = `${m.home} vs ${m.away}`;
     document.getElementById('md-subtitle').textContent = `${m.time} · ${m.comp}`;
@@ -1953,15 +1957,20 @@ function openMatchModal(matchId) {
 
   let oddsRow;
   if (m.isRacing && m.runners) {
+    const hasJockeys = m.runners.some(r => r.jockey);
+    const liveTag = m.isLiveData ? '<span style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:8px">LIVE ODDS</span>' : '';
     oddsRow = `
     <div style="margin-bottom:20px">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;font-weight:600">RUNNERS · ${m.runners.length} starters</div>
-      <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;font-weight:600">RUNNERS · ${m.runners.length} starters${liveTag}</div>
+      <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
         ${m.runners.map((r, i) => `
         <div style="display:flex;align-items:center;padding:10px 14px;${i>0?'border-top:1px solid var(--border)':''}${i===0?';background:rgba(240,180,41,.06)':''}">
-          <div style="width:28px;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600">${r.barrier}</div>
-          <div style="flex:1;font-size:13px;font-weight:${i===0?'700':'500'};color:var(--text)">${r.name}${i===0?' <span style="font-size:10px;color:#f0b429;letter-spacing:1px">FAV</span>':''}</div>
-          <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${i===0?'#f0b429':'var(--text)'}">${r.odds.toFixed(2)}</div>
+          <div style="width:28px;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600">${r.barrier||'-'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:${i===0?'700':'500'};color:var(--text)">${r.name}${i===0?' <span style="font-size:10px;color:#f0b429;letter-spacing:1px">FAV</span>':''}</div>
+            ${hasJockeys ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.jockey||''}${r.trainer ? ' · T: '+r.trainer : ''}${r.form ? ' · Form: '+r.form : ''}</div>` : ''}
+          </div>
+          <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${i===0?'#f0b429':'var(--text)'};margin-left:8px">${r.odds < 99 ? r.odds.toFixed(2) : '—'}</div>
         </div>`).join('')}
       </div>
     </div>`;
