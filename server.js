@@ -269,16 +269,12 @@ app.post('/api/auth/signup', async (req, res) => {
   if (username.length < 2 || username.length > 20) return res.status(400).json({ error: 'Username must be 2-20 characters' });
   if (!/^[a-z0-9_]+$/.test(username)) return res.status(400).json({ error: 'Letters, numbers and underscores only' });
   if (!/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
-  console.log(`[signup] attempt: ${username}, binIds:`, JSON.stringify(binIds));
   const users = await getUsers();
-  console.log(`[signup] existing users: ${Object.keys(users).length} — keys: ${Object.keys(users).join(',')}`);
   if (users[username]) return res.status(409).json({ error: 'Username already taken' });
   const salt = genSalt(), pinHash = hashPin(pin, salt);
   const idx  = Object.keys(users).length % AVATARS.length;
   users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], createdAt: Date.now() };
-  console.log(`[signup] saving users, binIds before save:`, JSON.stringify(binIds));
   await saveUsers(users);
-  console.log(`[signup] saved. binIds after save:`, JSON.stringify(binIds));
   const bets = await getBets();
   bets[username] = [];
   await saveBets(bets);
@@ -290,9 +286,7 @@ app.post('/api/auth/signin', async (req, res) => {
   let { username, pin } = req.body;
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   username = username.toLowerCase().trim();
-  console.log(`[signin] attempt: ${username}, binIds:`, JSON.stringify(binIds));
   const users = await getUsers();
-  console.log(`[signin] loaded users: ${Object.keys(users).length} — keys: ${Object.keys(users).join(',')}`);
   const user  = users[username];
   if (!user) return res.status(404).json({ error: 'Account not found' });
   if (hashPin(pin, user.salt) !== user.pinHash) return res.status(401).json({ error: 'Incorrect PIN' });
