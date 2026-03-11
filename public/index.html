@@ -1271,9 +1271,12 @@ function setSport(sport) {
       c.style.background=''; c.style.color='';
     }
   });
-  // Re-render current page
-  const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
-  if(activePage) showPage(activePage);
+  if (sport !== 'all') {
+    showPage('upcoming');
+  } else {
+    const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
+    if(activePage) showPage(activePage);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1523,15 +1526,28 @@ function renderTips() {
 // ═══════════════════════════════════════════════════════════════════
 function renderUpcoming() {
   const sports = ['All', ...new Set(UPCOMING.map(m=>m.sport))];
+  const activeSportLabel = currentSport === 'all' ? 'All' : (SPORT_FILTER_MAP[currentSport] || 'All');
   document.getElementById('upcoming-filters').innerHTML = sports.map(s=>
-    `<button class="filter-tab${s==='All'?' active':''}" onclick="filterUpcoming('${s}',this)">${s}</button>`
+    `<button class="filter-tab${s===activeSportLabel?' active':''}" onclick="filterUpcoming('${s}',this)">${s}</button>`
   ).join('');
-  renderUpcomingTable(UPCOMING);
+  const filtered = activeSportLabel === 'All' ? UPCOMING : UPCOMING.filter(m=>m.sport===activeSportLabel);
+  renderUpcomingTable(filtered);
 }
 
 function filterUpcoming(sport, btn) {
   document.querySelectorAll('#upcoming-filters .filter-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  const reverseMap = Object.fromEntries(Object.entries(SPORT_FILTER_MAP).map(([k,v])=>[v,k]));
+  currentSport = sport === 'All' ? 'all' : (reverseMap[sport] || 'all');
+  document.querySelectorAll('.sport-chip').forEach(c=>{
+    c.classList.toggle('active', c.dataset.sport===currentSport);
+    if(c.dataset.sport===currentSport && currentSport!=='all') {
+      c.style.background = SPORTS[currentSport]?.color || '#f0b429';
+      c.style.color = '#000';
+    } else if(c.dataset.sport!==currentSport) {
+      c.style.background=''; c.style.color='';
+    }
+  });
   const filtered = sport==='All' ? UPCOMING : UPCOMING.filter(m=>m.sport===sport);
   renderUpcomingTable(filtered);
 }
