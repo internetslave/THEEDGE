@@ -516,7 +516,14 @@ Return this exact JSON structure with ALL fields filled in:
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1400, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await r.json();
-    if (data.error) { console.error('Anthropic error:', data.error); return null; }
+    if (data.error) {
+      const msg = data.error?.message || JSON.stringify(data.error);
+      console.error('Anthropic error:', msg);
+      if (msg.includes('credit') || msg.includes('billing')) {
+        return { _error: 'credits', message: 'AI credits exhausted — top up at console.anthropic.com' };
+      }
+      return null;
+    }
     const raw = data.content?.[0]?.text || '';
     // Extract JSON — handle both bare JSON and markdown-wrapped
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -700,6 +707,7 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
     if (isFresh(aiCache, event.id, AI_TTL)) return res.json({ success: true, analysis: aiCache[event.id].data });
     const analysis = await analyseMatch(event);
     if (!analysis) return res.status(503).json({ success: false, error: 'AI unavailable' });
+    if (analysis._error) return res.status(402).json({ success: false, errorType: analysis._error, error: analysis.message });
     res.json({ success: true, analysis });
   } catch { res.status(500).json({ success: false, error: 'Analysis failed' }); }
 });
