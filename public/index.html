@@ -931,9 +931,15 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <button onclick="closeQuickBet()" style="background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>
     </div>
     <div id="qb-match-label" style="font-size:13px;color:var(--muted);margin-bottom:20px;font-family:var(--mono)"></div>
+    <div id="qb-runner-selector" style="display:none;margin-bottom:16px">
+      <label style="font-size:11px;color:var(--muted);letter-spacing:1px;display:block;margin-bottom:8px">SELECT RUNNER</label>
+      <select id="qb-runner-select" data-testid="qb-runner-select" onchange="updateQuickBetRunner()"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px 16px;font-size:14px;font-family:var(--mono);font-weight:600;outline:none;box-sizing:border-box;cursor:pointer">
+      </select>
+    </div>
     <div style="background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.2);border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">AI PICK</div>
+        <div id="qb-pick-label" style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">AI PICK</div>
         <div id="qb-pick" style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#f0b429"></div>
       </div>
       <div style="text-align:right">
@@ -1957,21 +1963,41 @@ function openMatchModal(matchId) {
 
   let oddsRow;
   if (m.isRacing && m.runners) {
-    const hasJockeys = m.runners.some(r => r.jockey);
     const liveTag = m.isLiveData ? '<span style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:8px">LIVE ODDS</span>' : '';
     oddsRow = `
     <div style="margin-bottom:20px">
       <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;font-weight:600">RUNNERS · ${m.runners.length} starters${liveTag}</div>
-      <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
-        ${m.runners.map((r, i) => `
-        <div style="display:flex;align-items:center;padding:10px 14px;${i>0?'border-top:1px solid var(--border)':''}${i===0?';background:rgba(240,180,41,.06)':''}">
-          <div style="width:28px;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600">${r.barrier||'-'}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:${i===0?'700':'500'};color:var(--text)">${r.name}${i===0?' <span style="font-size:10px;color:#f0b429;letter-spacing:1px">FAV</span>':''}</div>
-            ${hasJockeys ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.jockey||''}${r.trainer ? ' · T: '+r.trainer : ''}${r.form ? ' · Form: '+r.form : ''}</div>` : ''}
+      <div style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:10px" data-testid="runners-table">
+        ${m.runners.map((r, i) => {
+          const oddsDir = r.oddsOpen ? (r.odds < r.oddsOpen ? '↓' : r.odds > r.oddsOpen ? '↑' : '') : '';
+          const oddsDirCol = r.odds < r.oddsOpen ? '#10b981' : r.odds > r.oddsOpen ? '#ef4444' : '';
+          const l5 = r.last5 ? r.last5.split('-').map(c => {
+            const col = c==='W'?'#10b981':c==='P'?'#f0b429':'#ef4444';
+            return `<span style="display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:3px;font-size:9px;font-weight:700;background:${col}22;color:${col}">${c}</span>`;
+          }).join('') : '';
+          return `
+        <div style="padding:10px 14px;${i>0?'border-top:1px solid var(--border)':''}${i===0?'background:rgba(240,180,41,.06)':''}" data-testid="runner-row-${i}">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:24px;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600;text-align:center">${r.barrier||'-'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:${i===0?'700':'500'};color:var(--text)">${r.name}${i===0?' <span style="font-size:10px;color:#f0b429;letter-spacing:1px">FAV</span>':''}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 10px">
+                ${r.jockey?`<span>J: ${r.jockey}</span>`:''}${r.trainer?`<span>T: ${r.trainer}</span>`:''}${r.weight?`<span>${r.weight}kg</span>`:''}${r.age?`<span>${r.age}</span>`:''}
+              </div>
+            </div>
+            <div style="text-align:right;min-width:56px">
+              <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${i===0?'#f0b429':'var(--text)'}">${r.odds < 99 ? r.odds.toFixed(2) : '—'}</div>
+              ${r.oddsOpen && oddsDir ? `<div style="font-size:9px;font-family:var(--mono);color:${oddsDirCol}">${oddsDir} ${r.oddsOpen.toFixed(2)}</div>` : ''}
+            </div>
           </div>
-          <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:${i===0?'#f0b429':'var(--text)'};margin-left:8px">${r.odds < 99 ? r.odds.toFixed(2) : '—'}</div>
-        </div>`).join('')}
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;margin-left:32px;flex-wrap:wrap">
+            ${l5 ? `<div style="display:flex;gap:2px">${l5}</div>` : ''}
+            ${r.career ? `<span style="font-size:9px;color:var(--muted);font-family:var(--mono)">${r.career}</span>` : ''}
+            ${r.daysSinceRun ? `<span style="font-size:9px;color:var(--muted)">Last: ${r.daysSinceRun}d ago</span>` : ''}
+            ${r.careerEarnings ? `<span style="font-size:9px;color:var(--muted)">$${Number(r.careerEarnings).toLocaleString()}</span>` : ''}
+          </div>
+        </div>`;
+        }).join('')}
       </div>
     </div>`;
   } else {
@@ -2619,14 +2645,39 @@ function openQuickBet(matchId) {
   const m = UPCOMING.find(x=>String(x.id)===String(matchId));
   if (!m) return;
   quickBetMatch = m;
-  document.getElementById('qb-match-label').textContent = `${m.home} vs ${m.away} · ${m.time}`;
-  document.getElementById('qb-pick').textContent = m.pick;
-  const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
-  document.getElementById('qb-odds').textContent = oddsVal ? oddsVal+'x' : '—';
+
+  if (m.isRacing && m.runners && m.runners.length) {
+    document.getElementById('qb-match-label').textContent = `R${m.raceNumber} ${m.venue} · ${m.time}`;
+    document.getElementById('qb-pick-label').textContent = 'YOUR PICK';
+    const sel = document.getElementById('qb-runner-select');
+    sel.innerHTML = m.runners.map((r, i) => `<option value="${i}">${r.barrier||i+1}. ${r.name} — $${r.odds < 99 ? r.odds.toFixed(2) : '—'}${i===0?' ★ FAV':''}</option>`).join('');
+    sel.value = '0';
+    document.getElementById('qb-runner-selector').style.display = 'block';
+    updateQuickBetRunner();
+  } else {
+    document.getElementById('qb-match-label').textContent = `${m.home} vs ${m.away} · ${m.time}`;
+    document.getElementById('qb-pick-label').textContent = 'AI PICK';
+    document.getElementById('qb-pick').textContent = m.pick;
+    const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
+    document.getElementById('qb-odds').textContent = oddsVal ? oddsVal+'x' : '—';
+    document.getElementById('qb-runner-selector').style.display = 'none';
+    document.getElementById('qb-runner-select').innerHTML = '';
+  }
+
   document.getElementById('qb-stake').value = '';
   document.getElementById('qb-result').value = 'PENDING';
   document.getElementById('quick-bet-modal').style.display = 'flex';
   setTimeout(()=>document.getElementById('qb-stake').focus(), 100);
+}
+
+function updateQuickBetRunner() {
+  const m = quickBetMatch;
+  if (!m || !m.runners) return;
+  const idx = parseInt(document.getElementById('qb-runner-select').value) || 0;
+  const r = m.runners[idx];
+  if (!r) return;
+  document.getElementById('qb-pick').textContent = r.name;
+  document.getElementById('qb-odds').textContent = r.odds < 99 ? r.odds.toFixed(2)+'x' : '—';
 }
 
 function closeQuickBet() {
@@ -2639,25 +2690,39 @@ function saveQuickBet() {
   if (!m) return;
   const stake = parseFloat(document.getElementById('qb-stake').value);
   if (isNaN(stake) || stake <= 0) { showToast('⚠️ Enter a valid stake', false); return; }
-  const result  = document.getElementById('qb-result').value;
-  const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
+  const result = document.getElementById('qb-result').value;
+
+  let betPick, oddsVal, eventLabel;
+  if (m.isRacing && m.runners) {
+    const idx = parseInt(document.getElementById('qb-runner-select').value) || 0;
+    const r = m.runners[idx];
+    if (!r) { showToast('⚠️ Select a runner', false); return; }
+    betPick = r.name;
+    oddsVal = r.odds < 99 ? r.odds : 0;
+    eventLabel = `R${m.raceNumber} ${m.venue}`;
+  } else {
+    betPick = m.pick;
+    oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
+    eventLabel = `${m.home} vs ${m.away}`;
+  }
+
   const entry = {
     id: Date.now(),
     date:     new Date().toLocaleDateString('en-CA'),
     sport:    m.sport,
-    event:    `${m.home} vs ${m.away}`,
-    bet:      m.pick,
+    event:    eventLabel,
+    bet:      betPick,
     stake, odds: oddsVal || 0, result,
     betType:  'WIN', bookmaker: 'Sportsbet',
     venue: m.venue||'', comp: m.comp||'',
     confidence: m.confidence||0,
-    valueBet: !!m.valueBet, aiRecommended: true,
-    notes: 'Logged via AI Quick Bet'
+    valueBet: !!m.valueBet, aiRecommended: !m.isRacing,
+    notes: m.isRacing ? 'Logged via Quick Bet (Racing)' : 'Logged via AI Quick Bet'
   };
   bets.push(entry);
   saveBets();
   closeQuickBet();
-  showToast(`✅ Bet logged — ${m.pick} @ ${oddsVal}x`);
+  showToast(`✅ Bet logged — ${betPick} @ ${oddsVal}x`);
   renderHome();
 }
 

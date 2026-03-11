@@ -305,17 +305,65 @@ const FALLBACK_VENUES = {
   ]
 };
 const FALLBACK_NAMES = {
-  greyhound: ['Midnight Storm','Flying Ace','Blazing Speed','Cool Operator','Star Chaser','Thunder Roll','Shadow Express','Fast Lane','Rapid Fire','Dark Comet','Lucky Strike','Jet Stream','Wild Card','Bold Move','Iron Will','Swift Justice'],
-  horse: ['Northern Meteor','Southern Cross','Golden Slipper','Diamond Rain','Storm Rider','Royal Flush','Midnight Run','Silver Lining','Thunder Bay','Crystal Clear','Iron Horse','Phoenix Rising','River Dance','Ocean King','Mountain Peak','Desert Storm']
+  greyhound: [
+    'Midnight Storm','Flying Ace','Blazing Speed','Cool Operator','Star Chaser','Thunder Roll',
+    'Shadow Express','Fast Lane','Rapid Fire','Dark Comet','Lucky Strike','Jet Stream',
+    'Wild Card','Bold Move','Iron Will','Swift Justice','Prime Time','Hot Shot',
+    'Cash Flow','Power Play','Silver Bullet','Gold Rush','Night Hawk','Storm Chaser',
+    'Quick Draw','Top Notch','Fire Ball','Blue Diamond','Red Arrow','Flash Point',
+    'Aston Bolero','Fernando Mick','Bella Stellina','Zipping Lad','Shima Shine',
+    'My Redeemer','Tornado Tears','Fanta Bale','Dyna Patty','Mystic Riot'
+  ],
+  horse: [
+    'Northern Meteor','Southern Cross','Golden Slipper','Diamond Rain','Storm Rider','Royal Flush',
+    'Midnight Run','Silver Lining','Thunder Bay','Crystal Clear','Iron Horse','Phoenix Rising',
+    'River Dance','Ocean King','Mountain Peak','Desert Storm','Valley Girl','Harbour Bridge',
+    'Autumn Gold','Spring Tide','Winter Star','Summer Breeze','Sunset Strip','Dawn Patrol',
+    'Celtic Prince','Viking Warrior','Roman Empire','Spartan Hero','Trojan Star','Persian King',
+    'Winx Legacy','Phar Lap Ghost','Tulloch Road','Makybe Star','Octagonal Lad','Sunline Spirit',
+    'Kingston Rule','Carbine Prince','Bernborough Gold','Lonhro Bay','Saintly Son','Might And Power'
+  ]
+};
+const FALLBACK_JOCKEYS = {
+  horse: ['J. McDonald','D. Lane','J. Bowman','C. Williams','K. McEvoy','D. Oliver','M. Zahra','R. Moore','B. Melham','H. Bowman','T. Marquand','J. McNeil','W. Pike','C. Newitt','L. Currie','B. Avdulla','R. Dolan','N. Rawiller','G. Boss','S. Clipperton'],
+  greyhound: []
+};
+const FALLBACK_TRAINERS = {
+  horse: ['C. Waller','G. Waterhouse','J. Cummings','L. Freedman','D. Hayes','T. Busuttin','M. Price','C. Maher','A. Neasham','P. Moody','B. Laming','K. Lees','M. Smith','R. Quinton','J. Thompson','M. Newnham'],
+  greyhound: ['J. Bale','G. Hall','R. Britton','A. Dailly','S. Karakatsanis','M. Delbridge','B. Azzopardi','D. Geall','P. Enright','K. Greenough','T. Dailly','A. Gibbons']
 };
 const FALLBACK_COMPS = {
-  greyhound: ['Maiden','Grade 5','Grade 4','Free For All','Listed Race','Group 3'],
-  horse: ['Maiden Plate','Benchmark 72','Benchmark 82','Class 3 Handicap','Listed Race','Group 3']
+  greyhound: ['Maiden','Grade 5','Grade 4','Free For All','Listed Race','Group 3','Novice','Mixed 4/5'],
+  horse: ['Maiden Plate','Benchmark 72','Benchmark 82','Class 3 Handicap','Listed Race','Group 3','Benchmark 64','Class 1','Open Handicap','Group 2']
+};
+const FALLBACK_RACE_NAMES = {
+  horse: ['','','','Tab Highway','Everest Carnival','Winter Challenge','Provincial Cup','Country Classic','Inglis Sprint','Civic Stakes','Tramway Handicap','Show County Quality','Ajax Stakes','Canterbury Cup','Epsom Preview'],
+  greyhound: ['','','','Sandown Cup Heats','Speed Star','Bold Trease','Melbourne Cup Heats','Topgun','National Sprint','Silver Chief','Harrison-Dawson','Zoom Top']
 };
 
 function seededRandom(seed) {
   let s = seed;
   return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
+
+function generateForm(rng) {
+  const chars = ['1','2','3','4','5','6','7','8','x'];
+  return Array.from({length:5}, () => chars[Math.floor(rng() * chars.length)]).join('');
+}
+
+function generateCareer(rng) {
+  const starts = 8 + Math.floor(rng() * 40);
+  const winRate = 0.08 + rng() * 0.35;
+  const placeRate = 0.12 + rng() * 0.25;
+  const wins = Math.max(0, Math.round(starts * winRate));
+  const places = Math.max(0, Math.round(starts * placeRate));
+  return { starts, wins, places, earnings: Math.round((wins * 25000 + places * 8000 + starts * 1200) * (0.5 + rng())) };
+}
+
+function generateOddsMovement(rng, currentOdds) {
+  const shift = (rng() - 0.5) * 0.4;
+  const openOdds = Math.max(1.2, currentOdds * (1 + shift));
+  return { open: Math.round(openOdds * 100) / 100, current: currentOdds };
 }
 
 function generateRacingData(type) {
@@ -326,6 +374,10 @@ function generateRacingData(type) {
   const venues = FALLBACK_VENUES[type];
   const names = FALLBACK_NAMES[type];
   const comps = FALLBACK_COMPS[type];
+  const jockeys = FALLBACK_JOCKEYS[type];
+  const trainers = FALLBACK_TRAINERS[type];
+  const raceNames = FALLBACK_RACE_NAMES[type];
+  const goingOptions = ['Good 3','Good 4','Soft 5','Soft 6','Soft 7','Heavy 8','Heavy 9','Firm 1','Firm 2'];
   const events = [];
   const numVenues = 3 + Math.floor(rng() * 3);
   const usedVenues = [];
@@ -334,20 +386,46 @@ function generateRacingData(type) {
     if (usedVenues.includes(venue.name)) continue;
     usedVenues.push(venue.name);
     const numRaces = 6 + Math.floor(rng() * 4);
+    const venueGoing = goingOptions[Math.floor(rng() * goingOptions.length)];
     for (let r = 0; r < numRaces; r++) {
       const hoursAhead = 0.5 + rng() * 48;
       const raceTime = new Date(windowStart.getTime() + hoursAhead * 3600000);
       const numRunners = type === 'greyhound' ? 8 : (8 + Math.floor(rng() * 8));
       const runners = [];
       const usedNames = new Set();
+      const usedJockeys = new Set();
       for (let i = 0; i < numRunners; i++) {
         let name;
         do { name = names[Math.floor(rng() * names.length)]; } while (usedNames.has(name));
         usedNames.add(name);
-        runners.push({ name, odds: Math.round((1.5 + rng() * 20) * 100) / 100, barrier: i + 1 });
+        const baseOdds = Math.round((1.5 + rng() * 20) * 100) / 100;
+        let jockey = '';
+        if (jockeys.length) {
+          do { jockey = jockeys[Math.floor(rng() * jockeys.length)]; } while (usedJockeys.has(jockey) && usedJockeys.size < jockeys.length);
+          usedJockeys.add(jockey);
+        }
+        const trainer = trainers[Math.floor(rng() * trainers.length)];
+        const form = generateForm(rng);
+        const career = generateCareer(rng);
+        const oddsMovement = generateOddsMovement(rng, baseOdds);
+        const weight = type === 'horse' ? (52 + Math.round(rng() * 9 * 10) / 10) : '';
+        const age = type === 'horse' ? (2 + Math.floor(rng() * 6)) + 'yo' : (1 + Math.floor(rng() * 4)) + 'yo';
+        const daysSinceRun = 5 + Math.floor(rng() * 50);
+        const last5 = form.split('').map(c => c === 'x' ? 'L' : parseInt(c) <= 3 ? (parseInt(c) === 1 ? 'W' : 'P') : 'L');
+        runners.push({
+          name, odds: baseOdds, barrier: i + 1,
+          jockey, trainer, form, weight,
+          age, daysSinceRun,
+          last5: last5.join('-'),
+          career: `${career.starts}: ${career.wins}-${career.places}-${career.starts - career.wins - career.places}`,
+          careerEarnings: career.earnings,
+          oddsOpen: oddsMovement.open
+        });
       }
       runners.sort((a, b) => a.odds - b.odds);
       const distance = type === 'greyhound' ? [315,395,515,595,715][Math.floor(rng()*5)] : [1000,1100,1200,1400,1600,2000,2400,3200][Math.floor(rng()*8)];
+      const raceName = raceNames[Math.floor(rng() * raceNames.length)];
+      const prize = type === 'horse' ? (25000 + Math.floor(rng() * 475000)) : (5000 + Math.floor(rng() * 70000));
       events.push({
         id: `${type}_${venue.name.replace(/\s/g,'')}_R${r+1}_${daySeed}`,
         sport_key: type === 'horse' ? 'horse_racing_au' : 'greyhound_racing_au',
@@ -356,7 +434,11 @@ function generateRacingData(type) {
         commence_time: raceTime.toISOString(),
         venue: venue.name, state: venue.state,
         comp: comps[Math.floor(rng() * comps.length)],
-        distance, raceNumber: r + 1, runners, isRacing: true, isLiveData: false
+        raceName: raceName || '',
+        distance, distanceLabel: `${distance}m`,
+        raceNumber: r + 1, runners, isRacing: true, isLiveData: false,
+        going: venueGoing,
+        prizeTotal: prize
       });
     }
   }
