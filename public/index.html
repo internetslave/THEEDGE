@@ -2047,7 +2047,7 @@ async function doSignIn() {
     setToken(data.token);
     await loginAs(data.profile);
     migrateOldBets(data.profile.username);
-  } catch(e) { setLoginError('Network error — check connection'); }
+  } catch(e) { console.error('signin error:', e); setLoginError('Network error — check connection'); }
 }
 
 async function doSignUp() {
@@ -2071,7 +2071,7 @@ async function doSignUp() {
     setToken(data.token);
     await loginAs(data.profile);
     migrateOldBets(data.profile.username);
-  } catch(e) { setLoginError('Network error — check connection'); }
+  } catch(e) { console.error('signup error:', e); setLoginError('Network error — check connection'); }
 }
 
 async function loginAs(profile) {

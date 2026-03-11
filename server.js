@@ -244,13 +244,14 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  const origin  = req.headers.origin;
-  const allowed = ['https://sportsiq.replit.app', 'http://localhost:5000'];
-  if (!origin || allowed.includes(origin)) {
+  const origin = req.headers.origin;
+  const ok = !origin || origin.endsWith('.replit.app') || origin.endsWith('.repl.co') || origin.includes('localhost');
+  if (ok) {
     if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-session-token');
   }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
@@ -367,19 +368,8 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
 app.get('/api/db-test', async (req, res) => {
   res.json({
     hasKey: !!JSONBIN_KEY, hasBinId: !!JSONBIN_BIN_ID,
-    storeLoaded, users: Object.keys(store.users),
-    binId: JSONBIN_BIN_ID
+    storeLoaded, userCount: Object.keys(store.users).length
   });
-});
-
-// ── ODDS DEBUG ──
-app.get('/api/odds-debug', async (req, res) => {
-  if (!ODDS_API_KEY) return res.json({ error: 'No ODDS_API_KEY' });
-  try {
-    const r = await fetch(`${ODDS_BASE}/sports/aussierules_afl/odds/?apiKey=${ODDS_API_KEY}&regions=au&markets=h2h&oddsFormat=decimal`);
-    const text = await r.text();
-    res.json({ status: r.status, keyPresent: !!ODDS_API_KEY, keyPrefix: ODDS_API_KEY?.substring(0,8), body: text.substring(0, 500) });
-  } catch(e) { res.json({ error: e.message }); }
 });
 
 // ── HEALTH ──
