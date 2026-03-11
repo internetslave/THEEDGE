@@ -1063,6 +1063,16 @@ const SPORT_COLOR = {
   'UFC':'#f59e0b','Boxing':'#8b5cf6','Greyhound':'#06b6d4','Horse Racing':'#f97316'
 };
 
+const SPORT_FILTER_MAP = {
+  'afl': 'AFL', 'nrl': 'NRL', 'soccer': 'Soccer',
+  'ufc': 'UFC', 'boxing': 'Boxing', 'greyhound': 'Greyhound', 'horse': 'Horse Racing'
+};
+
+function matchesSportFilter(sportLabel, filterKey) {
+  if (filterKey === 'all') return true;
+  return sportLabel === SPORT_FILTER_MAP[filterKey];
+}
+
 // ── Live odds data — fetched from server ──
 let UPCOMING = [];
 let oddsLoading = false;
@@ -1287,7 +1297,7 @@ function renderHome() {
     </div>`).join('');
 
   // Matches — only show actual today matches
-  const filtered = currentSport==='all' ? UPCOMING : UPCOMING.filter(m=>m.sport.toLowerCase()===currentSport);
+  const filtered = UPCOMING.filter(m=>matchesSportFilter(m.sport, currentSport));
   const today = filtered.filter(m=>m.time.startsWith('Today'));
   document.getElementById('home-matches').innerHTML = !oddsLoaded
     ? `<div style="display:flex;flex-direction:column;gap:10px">${[1,2,3].map(()=>`<div class="loading-shimmer" style="height:130px;border-radius:12px"></div>`).join('')}</div>`
@@ -1423,7 +1433,7 @@ function aiReasoning(m) {
 // TIPS PAGE
 // ═══════════════════════════════════════════════════════════════════
 function renderTips() {
-  const filtered = currentSport==='all' ? UPCOMING : UPCOMING.filter(m=>m.sport.toLowerCase()===currentSport);
+  const filtered = UPCOMING.filter(m=>matchesSportFilter(m.sport, currentSport));
   const sorted = [...filtered].sort((a,b)=>b.confidence-a.confidence);
 
   // Match of the Day on tips page
@@ -1827,12 +1837,47 @@ function closeConfirm() { document.getElementById('confirm-modal').classList.rem
 // ═══════════════════════════════════════════════════════════════════
 function closeMatchModal() { document.getElementById('match-modal').classList.remove('show'); }
 
+async function requestAIAnalysis(m) {
+  const token = localStorage.getItem('edgeiq-token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+      body: JSON.stringify({ event: { id: m.id, home: m.home, away: m.away, sport: m.sport, homeOdds: m.homeOdds, awayOdds: m.awayOdds, drawOdds: m.drawOdds } })
+    });
+    const data = await res.json();
+    if (data.success && data.analysis) {
+      const idx = UPCOMING.findIndex(x => x.id === m.id);
+      if (idx !== -1) {
+        UPCOMING[idx].aiReady = true;
+        UPCOMING[idx].recommendation = data.analysis.recommendation || UPCOMING[idx].pick;
+        UPCOMING[idx].confidence = data.analysis.confidence || UPCOMING[idx].confidence;
+        UPCOMING[idx].reasoning = data.analysis.reasoning || '';
+        UPCOMING[idx].keyFactor = data.analysis.keyFactor || '';
+        UPCOMING[idx].valueBet = data.analysis.valueBet != null ? data.analysis.valueBet : UPCOMING[idx].valueBet;
+        UPCOMING[idx].pick = data.analysis.recommendation || UPCOMING[idx].pick;
+      }
+      if (document.getElementById('match-modal').classList.contains('show')) {
+        openMatchModal(m.id);
+      }
+    } else {
+      const el = document.getElementById('md-ai-loading');
+      if (el) el.textContent = '🤖 AI analysis unavailable — try again later';
+    }
+  } catch(e) {
+    console.error('AI analysis request failed:', e);
+    const el = document.getElementById('md-ai-loading');
+    if (el) el.textContent = '🤖 AI analysis unavailable';
+  }
+}
+
 function openMatchModal(matchId) {
   const m = UPCOMING.find(x=>String(x.id)===String(matchId));
   if(!m) return;
 
   const sc = SPORT_COLOR[m.sport]||'#aaa';
-  const ai = m.aiAnalysis;
+  const ai = m.aiReady ? { summary: m.reasoning || '', reasoning: m.reasoning || '', keyFactor: m.keyFactor || '', keyFactors: m.keyFactor ? [{icon:'🔑', label:'Key Factor', value: m.keyFactor}] : [] } : null;
   const confCol = confColor(m.confidence);
 
   // Header
@@ -1882,8 +1927,12 @@ function openMatchModal(matchId) {
       ${ai.reasoning ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:10px">${ai.reasoning}</div>` : ''}
     </div>` : `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px">🤖 AI analysis loading — check back soon</div>
+      <div id="md-ai-loading" style="font-size:11px;color:var(--muted);letter-spacing:1px">🤖 Loading AI analysis...</div>
     </div>`;
+
+  if (!m.aiReady) {
+    requestAIAnalysis(m);
+  }
 
   const valueBadge = m.valueBet ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:4px 12px;font-size:11px;color:#10b981;font-weight:700;letter-spacing:1px;margin-bottom:16px">⚡ VALUE BET DETECTED</div>` : '';
 
