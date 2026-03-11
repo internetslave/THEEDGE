@@ -151,7 +151,17 @@ function rateLimit(req, res, next) {
 // ODDS
 // ═══════════════════════════════════════════════════════════════════
 const oddsCache = {};
-const ODDS_TTL  = 5 * 60 * 1000;
+const ODDS_TTL  = 15 * 60 * 1000;
+let combinedOddsCache = { data: null, ts: 0 };
+
+const ALL_SPORTS = [
+  { key: 'aussierules_afl',         label: 'afl'       },
+  { key: 'rugbyleague_nrl',          label: 'nrl'       },
+  { key: 'soccer_australia_aleague', label: 'soccer_al' },
+  { key: 'soccer_epl',               label: 'soccer_epl'},
+  { key: 'mma_mixed_martial_arts',   label: 'ufc'       },
+  { key: 'boxing_boxing',            label: 'boxing'    },
+];
 
 async function fetchOdds(sport) {
   if (oddsCache[sport] && Date.now() - oddsCache[sport].ts < ODDS_TTL) return oddsCache[sport].data;
@@ -163,19 +173,13 @@ async function fetchOdds(sport) {
 }
 
 async function fetchAllOdds() {
-  const sports = [
-    { key: 'aussierules_afl',         label: 'afl'       },
-    { key: 'rugbyleague_nrl',          label: 'nrl'       },
-    { key: 'soccer_australia_aleague', label: 'soccer_al' },
-    { key: 'soccer_epl',               label: 'soccer_epl'},
-    { key: 'mma_mixed_martial_arts',   label: 'ufc'       },
-    { key: 'boxing_boxing',            label: 'boxing'    },
-  ];
+  if (combinedOddsCache.data && Date.now() - combinedOddsCache.ts < ODDS_TTL) return combinedOddsCache.data;
   const results = {};
-  for (const s of sports) {
+  for (const s of ALL_SPORTS) {
     try { results[s.label] = await fetchOdds(s.key); }
     catch (e) { console.error(`Odds fetch failed [${s.key}]:`, e.message); results[s.label] = oddsCache[s.key]?.data || []; }
   }
+  combinedOddsCache = { data: results, ts: Date.now() };
   return results;
 }
 
@@ -348,7 +352,9 @@ app.get('/api/odds', rateLimit, async (req, res) => {
       }
     }
     queueAIAnalysis(events.filter(e => !e.aiReady));
-    res.json({ success: true, events });
+    const cacheAge = combinedOddsCache.ts ? Math.round((Date.now() - combinedOddsCache.ts) / 1000) : 0;
+    const nextRefresh = Math.max(0, Math.round((ODDS_TTL - (Date.now() - combinedOddsCache.ts)) / 1000));
+    res.json({ success: true, events, cacheAge, nextRefresh, cacheTTL: ODDS_TTL / 1000 });
   } catch (e) { res.status(500).json({ success: false, error: 'Failed to fetch odds' }); }
 });
 

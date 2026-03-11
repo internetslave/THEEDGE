@@ -1118,6 +1118,9 @@ function hashCode(s) {
   return h;
 }
 
+let oddsNextRefresh = 900;
+let oddsPollTimer = null;
+
 async function fetchLiveOdds() {
   if (oddsLoading) return;
   oddsLoading = true;
@@ -1129,19 +1132,29 @@ async function fetchLiveOdds() {
       UPCOMING = data.events.map(enrichEvent);
       oddsLoaded = true;
       oddsLastUpdated = Date.now();
+      if (data.nextRefresh) oddsNextRefresh = data.nextRefresh;
       updateLastUpdatedBadge();
+      scheduleNextOddsPoll();
       const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
       if (activePage) showPage(activePage);
     } else {
-      showToast('⚠️ No live odds available right now', false);
+      if (!oddsLoaded) showToast('⚠️ No live odds available right now', false);
+      scheduleNextOddsPoll();
     }
   } catch(err) {
     showToast('⚠️ Could not load live odds', false);
     console.error(err);
+    scheduleNextOddsPoll();
   } finally {
     oddsLoading = false;
     showOddsLoading(false);
   }
+}
+
+function scheduleNextOddsPoll() {
+  if (oddsPollTimer) clearTimeout(oddsPollTimer);
+  const waitSecs = Math.max(60, oddsNextRefresh + 5);
+  oddsPollTimer = setTimeout(fetchLiveOdds, waitSecs * 1000);
 }
 
 function updateLastUpdatedBadge() {
@@ -1156,8 +1169,6 @@ function showOddsLoading(show) {
   if (el) el.textContent = show ? 'LOADING...' : (oddsLastUpdated ? 'JUST UPDATED' : 'LIVE ODDS');
 }
 
-// Refresh every 2 minutes, update timestamp display every 30s
-setInterval(fetchLiveOdds, 2 * 60 * 1000);
 setInterval(updateLastUpdatedBadge, 30 * 1000);
 
 // ── Sample H2H data ──
