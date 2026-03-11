@@ -184,6 +184,111 @@ async function fetchAllOdds() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// RACING DATA (Greyhounds & Horse Racing)
+// ═══════════════════════════════════════════════════════════════════
+const RACING_VENUES = {
+  greyhound: [
+    { name: 'Sandown Park', state: 'VIC' }, { name: 'The Meadows', state: 'VIC' },
+    { name: 'Wentworth Park', state: 'NSW' }, { name: 'Albion Park', state: 'QLD' },
+    { name: 'Cannington', state: 'WA' }, { name: 'Angle Park', state: 'SA' },
+    { name: 'Dapto', state: 'NSW' }, { name: 'Bulli', state: 'NSW' },
+    { name: 'Shepparton', state: 'VIC' }, { name: 'Ipswich', state: 'QLD' }
+  ],
+  horse: [
+    { name: 'Flemington', state: 'VIC' }, { name: 'Randwick', state: 'NSW' },
+    { name: 'Eagle Farm', state: 'QLD' }, { name: 'Moonee Valley', state: 'VIC' },
+    { name: 'Rosehill', state: 'NSW' }, { name: 'Caulfield', state: 'VIC' },
+    { name: 'Doomben', state: 'QLD' }, { name: 'Ascot', state: 'WA' },
+    { name: 'Morphettville', state: 'SA' }, { name: 'Warwick Farm', state: 'NSW' }
+  ]
+};
+
+const GREYHOUND_NAMES = [
+  'Midnight Storm','Flying Ace','Blazing Speed','Cool Operator','Star Chaser','Thunder Roll',
+  'Shadow Express','Fast Lane','Rapid Fire','Dark Comet','Lucky Strike','Jet Stream',
+  'Wild Card','Bold Move','Iron Will','Swift Justice','Prime Time','Hot Shot',
+  'Cash Flow','Power Play','Silver Bullet','Gold Rush','Night Hawk','Storm Chaser',
+  'Quick Draw','Top Notch','Fire Ball','Blue Diamond','Red Arrow','Flash Point'
+];
+
+const HORSE_NAMES = [
+  'Northern Meteor','Southern Cross','Golden Slipper','Diamond Rain','Storm Rider','Royal Flush',
+  'Midnight Run','Silver Lining','Thunder Bay','Crystal Clear','Iron Horse','Phoenix Rising',
+  'River Dance','Ocean King','Mountain Peak','Desert Storm','Valley Girl','Harbour Bridge',
+  'Autumn Gold','Spring Tide','Winter Star','Summer Breeze','Sunset Strip','Dawn Patrol',
+  'Celtic Prince','Viking Warrior','Roman Empire','Spartan Hero','Trojan Star','Persian King'
+];
+
+const RACE_COMPS = {
+  greyhound: ['Listed Race','Group 3','Group 2','Group 1','Maiden','Grade 5','Grade 4','Free For All'],
+  horse: ['Listed Race','Group 3','Group 2','Group 1','Maiden Plate','Benchmark 72','Benchmark 82','Class 3 Handicap']
+};
+
+function seededRandom(seed) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
+
+function generateRacingData(type) {
+  const now = new Date();
+  const daySeed = Math.floor(now.getTime() / (6 * 60 * 60 * 1000));
+  const windowStart = new Date(daySeed * 6 * 60 * 60 * 1000);
+  const rng = seededRandom(daySeed + (type === 'horse' ? 7777 : 3333));
+  const venues = RACING_VENUES[type];
+  const names = type === 'horse' ? HORSE_NAMES : GREYHOUND_NAMES;
+  const comps = RACE_COMPS[type];
+  const events = [];
+
+  const numVenues = 3 + Math.floor(rng() * 3);
+  const usedVenues = [];
+  for (let v = 0; v < numVenues; v++) {
+    const venue = venues[Math.floor(rng() * venues.length)];
+    if (usedVenues.includes(venue.name)) continue;
+    usedVenues.push(venue.name);
+    const numRaces = 6 + Math.floor(rng() * 4);
+    for (let r = 0; r < numRaces; r++) {
+      const hoursAhead = 0.5 + rng() * 48;
+      const raceTime = new Date(windowStart.getTime() + hoursAhead * 3600000);
+      const numRunners = type === 'greyhound' ? 8 : (8 + Math.floor(rng() * 8));
+      const runners = [];
+      const usedNames = new Set();
+      for (let i = 0; i < numRunners; i++) {
+        let name;
+        do { name = names[Math.floor(rng() * names.length)]; } while (usedNames.has(name));
+        usedNames.add(name);
+        const baseOdds = 1.5 + rng() * 20;
+        runners.push({ name, odds: Math.round(baseOdds * 100) / 100, barrier: i + 1 });
+      }
+      runners.sort((a, b) => a.odds - b.odds);
+      const comp = comps[Math.floor(rng() * comps.length)];
+      const distance = type === 'greyhound'
+        ? [315, 395, 515, 595, 715][Math.floor(rng() * 5)]
+        : [1000, 1100, 1200, 1400, 1600, 2000, 2400, 3200][Math.floor(rng() * 8)];
+
+      events.push({
+        id: `${type}_${venue.name.replace(/\s/g,'')}_R${r+1}_${daySeed}`,
+        sport_key: type === 'horse' ? 'horse_racing_au' : 'greyhound_racing_au',
+        home_team: runners[0].name,
+        away_team: `${numRunners} runners`,
+        commence_time: raceTime.toISOString(),
+        bookmakers: [{
+          key: 'tab_au',
+          title: 'TAB',
+          markets: [{ key: 'h2h', outcomes: runners.map(r => ({ name: r.name, price: r.odds })) }]
+        }],
+        venue: venue.name,
+        state: venue.state,
+        comp,
+        distance,
+        runners,
+        raceNumber: r + 1
+      });
+    }
+  }
+  return events.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // AI ANALYSIS
 // ═══════════════════════════════════════════════════════════════════
 const aiCache = {};
@@ -351,11 +456,36 @@ app.get('/api/odds', rateLimit, async (req, res) => {
         events.push({ id: ev.id, sport: sportLabels[key] || key, home: ev.home_team, away: ev.away_team, homeOdds: home.price, awayOdds: away.price, drawOdds: draw?.price || null, commenceTime: ev.commence_time, aiReady: !!aiData, ...(aiData || {}) });
       }
     }
-    queueAIAnalysis(events.filter(e => !e.aiReady));
+
+    const greyRaces = generateRacingData('greyhound');
+    for (const ev of greyRaces) {
+      const fav = ev.runners[0];
+      events.push({
+        id: ev.id, sport: 'Greyhound', home: fav.name, away: `R${ev.raceNumber} ${ev.venue}`,
+        homeOdds: fav.odds, awayOdds: ev.runners[1]?.odds || null, drawOdds: null,
+        commenceTime: ev.commence_time, aiReady: false,
+        venue: ev.venue, comp: ev.comp, distance: ev.distance,
+        raceNumber: ev.raceNumber, runners: ev.runners, isRacing: true
+      });
+    }
+
+    const horseRaces = generateRacingData('horse');
+    for (const ev of horseRaces) {
+      const fav = ev.runners[0];
+      events.push({
+        id: ev.id, sport: 'Horse Racing', home: fav.name, away: `R${ev.raceNumber} ${ev.venue}`,
+        homeOdds: fav.odds, awayOdds: ev.runners[1]?.odds || null, drawOdds: null,
+        commenceTime: ev.commence_time, aiReady: false,
+        venue: ev.venue, comp: ev.comp, distance: ev.distance,
+        raceNumber: ev.raceNumber, runners: ev.runners, isRacing: true
+      });
+    }
+
+    queueAIAnalysis(events.filter(e => !e.aiReady && !e.isRacing));
     const cacheAge = combinedOddsCache.ts ? Math.round((Date.now() - combinedOddsCache.ts) / 1000) : 0;
     const nextRefresh = Math.max(0, Math.round((ODDS_TTL - (Date.now() - combinedOddsCache.ts)) / 1000));
     res.json({ success: true, events, cacheAge, nextRefresh, cacheTTL: ODDS_TTL / 1000 });
-  } catch (e) { res.status(500).json({ success: false, error: 'Failed to fetch odds' }); }
+  } catch (e) { console.error('Odds error:', e); res.status(500).json({ success: false, error: 'Failed to fetch odds' }); }
 });
 
 // ── AI ANALYSE ──
@@ -539,12 +669,35 @@ app.post('/api/tipping/admin/result', authMiddleware, async (req, res) => {
 
 app.post('/api/tipping/admin/set-role', async (req, res) => {
   const { secret, username, role } = req.body;
-  if (secret !== (process.env.ADMIN_SECRET || 'edgeiq-admin-2026')) return res.status(403).json({ error: 'Wrong secret' });
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'Wrong secret' });
   const users = await getUsers();
   if (!users[username]) return res.status(404).json({ error: 'User not found' });
   users[username].role = role;
   await saveUsers(users);
   res.json({ success:true });
+});
+
+// ── FANTASY AI PROXY ──
+app.post('/api/fantasy/ask', rateLimit, authMiddleware, async (req, res) => {
+  if (!ANTHROPIC_API_KEY) return res.status(503).json({ success: false, error: 'AI not configured' });
+  const { prompt, title } = req.body;
+  if (!prompt || typeof prompt !== 'string') return res.status(400).json({ success: false, error: 'Prompt required' });
+  if (prompt.length > 3000) return res.status(400).json({ success: false, error: 'Prompt too long' });
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    if (!r.ok) {
+      console.error('Anthropic API error:', r.status);
+      return res.status(502).json({ success: false, error: 'AI service returned an error' });
+    }
+    const data = await r.json();
+    const text = data.content?.[0]?.text;
+    if (!text) return res.status(502).json({ success: false, error: 'No response from AI' });
+    res.json({ success: true, text });
+  } catch (e) { console.error('Fantasy AI error:', e.message); res.status(500).json({ success: false, error: 'AI request failed' }); }
 });
 
 // Catch-all

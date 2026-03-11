@@ -831,17 +831,17 @@ async function askClaude(prompt, containerId, title) {
       <div class="fiq-loading-text">ANALYSING...</div>
     </div>`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const token = localStorage.getItem('edgeiq-token-v2');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['x-session-token'] = token;
+    const res = await fetch('/api/fantasy/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers,
+      body: JSON.stringify({ prompt, title })
     });
     const data = await res.json();
-    const text = data.content?.[0]?.text || 'No response received.';
+    if (!data.success) throw new Error(data.error || 'Request failed');
+    const text = data.text;
     el.innerHTML = `
       <div class="fiq-result">
         <div class="fiq-result-header">
