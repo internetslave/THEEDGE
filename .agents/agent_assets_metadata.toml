@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "soMeZY7TzOrP1oF6oPlh8"
+uri = "file://all_files_export.txt"
+type = "text"
+title = "All Project Files Export (server.js, index.html, fantasy.html, tipping.html, package.json, replit.md)"
