@@ -476,28 +476,55 @@ async function analyseMatch(ev) {
   if (!ANTHROPIC_API_KEY) return null;
   if (isFresh(aiCache, ev.id, AI_TTL)) return aiCache[ev.id].data;
   try {
-    const drawOption = ev.drawOdds ? ` or Draw` : '';
-    const prompt = `You are an expert sports betting analyst with deep knowledge of ${ev.sport} statistics, team form, head-to-head records, and venue history. Analyse this match thoroughly and respond with ONLY valid JSON — no preamble, no markdown.
+    const home = ev.home, away = ev.away, sport = ev.sport;
+    const oddsLine = `${home} @ ${ev.homeOdds}, ${away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ''}`;
+    const recOptions = ev.drawOdds ? `"${home}", "${away}", or "Draw"` : `"${home}" or "${away}"`;
 
-Match: ${ev.home} vs ${ev.away}
-Sport: ${ev.sport}
-Odds: ${ev.home} @ ${ev.homeOdds}, ${ev.away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ``}
+    const prompt = `You are a sharp Australian sports betting analyst. Analyse this match and return ONLY a JSON object — no markdown, no explanation outside the JSON.
 
-Use your knowledge of these teams to generate realistic, specific analysis. Include actual historical context — recent season form, head-to-head records, key players, venue advantages, coaching matchups, injury concerns, and betting patterns.
+MATCH: ${home} vs ${away}
+SPORT: ${sport}
+ODDS: ${oddsLine}
 
-Respond with ONLY this JSON:
-{"recommendation":"${ev.home} or ${ev.away}${ev.drawOdds ? ' or Draw' : ''}","confidence":72,"valueBet":false,"summary":"2 sentence punchy verdict explaining the pick","form":{"home":"Last 5 e.g. W W L W W — brief note on current momentum","away":"Last 5 e.g. L W L W L — brief note on current momentum"},"headToHead":"Specific H2H record e.g. ${ev.home} have won 4 of last 6 meetings. Last clash ended 24-18 in Round 5 2025","venueEdge":"Home ground advantage stat or travel note e.g. ${ev.home} are 7-2 at home this season","keyFactors":[{"icon":"⚡","label":"Key Reason","value":"The single most important factor driving this pick"},{"icon":"📊","label":"Form Edge","value":"Specific form insight e.g. 4 straight wins averaging 28 pts"},{"icon":"🏟️","label":"Venue","value":"Home/away specific stat or advantage"},{"icon":"⚠️","label":"Risk","value":"Main reason this pick could fail — injury, suspension, fatigue"}],"bettingAngle":"One specific betting insight e.g. Broncos are 8-2 as home favourites this season"}`;
+Draw on your knowledge of these teams/competitions to produce SPECIFIC, REALISTIC analysis. Use real team form, real head-to-head history, real venue stats, real injury context, real betting patterns. Be specific — use actual numbers, scorelines, and player names where you know them.
+
+Return this exact JSON structure with ALL fields filled in:
+
+{
+  "recommendation": <one of ${recOptions}>,
+  "confidence": <integer 50-95>,
+  "valueBet": <true if the recommended team's odds represent genuine value, false otherwise>,
+  "summary": "<2-3 sentence punchy verdict that explains WHY this is the pick, referencing specific form or stats>",
+  "form": {
+    "home": "<${home} last 5 results e.g. W W L W W — with a specific note about their current momentum, scoring avg, or key players>",
+    "away": "<${away} last 5 results e.g. L W W L W — with a specific note about their current momentum, scoring avg, or key players>"
+  },
+  "headToHead": "<Specific H2H record between these teams, e.g. '${home} have won 7 of the last 10 meetings. They won the most recent clash 22-14 in Round 18 last season.' Include actual recent results if known.>",
+  "venueEdge": "<Specific venue/travel advantage or disadvantage, e.g. '${home} are 8-2 at home this season and have not lost at this ground since Round 4 last year. ${away} have travelled interstate 3 times this season winning only once.'>",
+  "keyFactors": [
+    {"icon": "⚡", "label": "Key Reason", "value": "<The single most decisive factor — e.g. 'Collingwood's midfield dominance: averaging +12 clearances per game over last 5 rounds'>"},
+    {"icon": "📊", "label": "Form Edge", "value": "<Specific form stat — e.g. '${home} have won 4 straight, averaging 94 pts. ${away} lost 3 of last 4, conceding 80+ each time'>"},
+    {"icon": "🏟️", "label": "Venue", "value": "<Home/away specific insight — e.g. 'Bulldogs are 6-1 at Marvel this season; Giants have lost all 3 interstate trips in 2025'>"},
+    {"icon": "⚠️", "label": "Risk", "value": "<Main risk to the pick — e.g. 'Tim English is a late out, weakening the Bulldogs ruck by 20%'>"}
+  ],
+  "bettingAngle": "<One sharp betting insight e.g. '${home} as home favourites are 9-1 this season — the market is pricing them correctly but there's line value in the -12.5 handicap given their recent scoring dominance.'>"
+}`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 900, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1400, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await r.json();
-    const analysis = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,'').trim() || '{}');
+    if (data.error) { console.error('Anthropic error:', data.error); return null; }
+    const raw = data.content?.[0]?.text || '';
+    // Extract JSON — handle both bare JSON and markdown-wrapped
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(raw.replace(/```json|```/g,'').trim());
     aiCache[ev.id] = { data: analysis, ts: Date.now() };
+    console.log(`[AI] analysed ${home} vs ${away} — conf:${analysis.confidence}% pick:${analysis.recommendation}`);
     return analysis;
-  } catch (err) { console.error(`AI failed:`, err.message); return null; }
+  } catch (err) { console.error(`AI failed for ${ev.home} vs ${ev.away}:`, err.message); return null; }
 }
 
 async function processAIQueue() {
