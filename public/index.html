@@ -18,7 +18,7 @@
   --border: #1f2937;
   --border2: #161d28;
   --text: #e8edf2;
-  --muted: #4b5a6b;
+  --muted: #7a8a9a;
   --dim: #1f2937;
   --afl: #e8314a;
   --nrl: #00c85a;
@@ -437,6 +437,7 @@ tbody tr:hover{background:var(--bg3)}
 .ai-modal-title{font-family:var(--head);font-size:16px;font-weight:700;letter-spacing:1px;color:var(--accent)}
 .ai-modal-body{padding:24px;max-height:70vh;overflow-y:auto}
 .ai-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:16px}
+#md-fun-fact{transition:opacity .3s}
 .ai-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
 .ai-loading-text{color:var(--muted);font-size:13px;font-family:var(--mono);letter-spacing:1px}
 .ai-result{animation:fadeIn 0.5s ease}
@@ -2046,9 +2047,53 @@ function closeConfirm() { document.getElementById('confirm-modal').classList.rem
 // ═══════════════════════════════════════════════════════════════════
 function closeMatchModal() { document.getElementById('match-modal').classList.remove('show'); }
 
+// ── FUN FACTS / DID YOU KNOW cycler ──
+const BETTING_FACTS = [
+  "The favourite wins only ~33% of horse races — value is everything, not picking winners.",
+  "The Kelly Criterion suggests betting no more than 2–5% of your bankroll per event.",
+  "Line movement after 8 pm often signals sharp (professional) money, not casual bettors.",
+  "In AFL, teams leading at half-time go on to win the match about 72% of the time.",
+  "Home teams in the NRL cover the spread less than 50% of the time on average.",
+  "The bookmaker's overround (margin) on head-to-head markets is typically 4–8%.",
+  "Tracking your ROI over 500+ bets is the only reliable way to measure your edge.",
+  "Rain in AFL significantly increases contested possessions and lowers scoring.",
+  "Caulfield Cup runners drawn barriers 1–6 win at a 40% higher rate.",
+  "A 3% ROI sustained over 1,000 bets puts you in the top 5% of all sports bettors.",
+  "Dogs with fast early speed win Group 1 sprints 55% more often at tight tracks.",
+  "NRL teams playing their 3rd game in 11 days cover the spread only 38% of the time.",
+  "The best long-term value is often found in markets with fewer than 4 outcomes.",
+  "Closing line value (CLV) is the gold standard for measuring if a bet was good.",
+  "Backing underdogs in head-to-head markets outperforms favourites in the long run."
+];
+let _factTimer = null;
+let _factIdx = 0;
+function startFactCycler() {
+  const box  = document.getElementById('md-fun-fact');
+  const text = document.getElementById('md-fun-fact-text');
+  if (!box || !text) return;
+  _factIdx = Math.floor(Math.random() * BETTING_FACTS.length);
+  text.textContent = BETTING_FACTS[_factIdx];
+  box.style.display = 'block';
+  box.style.opacity = '1';
+  _factTimer = setInterval(() => {
+    _factIdx = (_factIdx + 1) % BETTING_FACTS.length;
+    box.style.opacity = '0';
+    setTimeout(() => {
+      text.textContent = BETTING_FACTS[_factIdx];
+      box.style.opacity = '1';
+    }, 300);
+  }, 3500);
+}
+function stopFactCycler() {
+  if (_factTimer) { clearInterval(_factTimer); _factTimer = null; }
+  const box = document.getElementById('md-fun-fact');
+  if (box) box.style.display = 'none';
+}
+
 async function requestAIAnalysis(m) {
   const token = localStorage.getItem('edgeiq-token-v2');
   if (!token) return;
+  startFactCycler();
   try {
     const res = await fetch('/api/analyse', {
       method: 'POST',
@@ -2073,10 +2118,12 @@ async function requestAIAnalysis(m) {
         UPCOMING[idx].valueBet = data.analysis.valueBet != null ? data.analysis.valueBet : UPCOMING[idx].valueBet;
         UPCOMING[idx].pick = data.analysis.recommendation || UPCOMING[idx].pick;
       }
+      stopFactCycler();
       if (document.getElementById('match-modal').classList.contains('show')) {
         openMatchModal(m.id);
       }
     } else {
+      stopFactCycler();
       const el = document.getElementById('md-ai-loading');
       if (el) {
         if (data?.errorType === 'credits') {
@@ -2087,6 +2134,7 @@ async function requestAIAnalysis(m) {
       }
     }
   } catch(e) {
+    stopFactCycler();
     console.error('AI analysis request failed:', e);
     const el = document.getElementById('md-ai-loading');
     if (el) el.textContent = '🤖 AI analysis unavailable — check connection';
@@ -2237,6 +2285,10 @@ function openMatchModal(matchId) {
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center">
       <div style="font-size:22px;margin-bottom:8px">🤖</div>
       <div id="md-ai-loading" style="font-size:11px;color:var(--muted);letter-spacing:1px">Loading AI analysis...</div>
+      <div id="md-fun-fact" style="margin-top:14px;padding:12px;background:rgba(240,180,41,.05);border:1px solid rgba(240,180,41,.15);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6;text-align:left;display:none">
+        <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);display:block;margin-bottom:4px">📊 DID YOU KNOW?</span>
+        <span id="md-fun-fact-text"></span>
+      </div>
     </div>`;
 
   if (!m.aiReady && !m.isRacing) {
