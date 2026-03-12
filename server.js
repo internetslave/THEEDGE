@@ -159,14 +159,15 @@ const ODDS_TTL  = 6 * 60 * 60 * 1000; // 6-hour cache — preserves API credits
 let combinedOddsCache = { data: null, ts: 0 };
 let oddsApiCreditsRemaining = null;  // tracked from response headers
 
+// 1 credit per request — do NOT use multiple regions (each region = 1 extra credit)
 const ALL_SPORTS = [
-  { key: 'aussierules_afl',         label: 'afl',        regions: 'au'    },
-  { key: 'rugbyleague_nrl',          label: 'nrl',        regions: 'au'    },
-  { key: 'soccer_australia_aleague', label: 'soccer_al',  regions: 'au'    },
-  { key: 'soccer_epl',               label: 'soccer_epl', regions: 'au,uk' },
-  { key: 'mma_mixed_martial_arts',   label: 'ufc',        regions: 'au,us' },
-  { key: 'boxing_boxing',            label: 'boxing',     regions: 'au,us' },
-  { key: 'basketball_nba',           label: 'nba',        regions: 'au,us' },
+  { key: 'aussierules_afl',         label: 'afl',        regions: 'au' },
+  { key: 'rugbyleague_nrl',          label: 'nrl',        regions: 'au' },
+  { key: 'soccer_australia_aleague', label: 'soccer_al',  regions: 'au' },
+  { key: 'soccer_epl',               label: 'soccer_epl', regions: 'au' },
+  { key: 'mma_mixed_martial_arts',   label: 'ufc',        regions: 'au' },
+  { key: 'boxing_boxing',            label: 'boxing',     regions: 'au' },
+  { key: 'basketball_nba',           label: 'nba',        regions: 'us' }, // US bookmakers for NBA coverage
 ];
 
 async function fetchOdds(sport, regions = 'au') {
@@ -185,10 +186,15 @@ async function fetchOdds(sport, regions = 'au') {
   return data;
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function fetchAllOdds() {
   if (combinedOddsCache.data && Date.now() - combinedOddsCache.ts < ODDS_TTL) return combinedOddsCache.data;
   const results = {};
-  for (const s of ALL_SPORTS) {
+  for (let i = 0; i < ALL_SPORTS.length; i++) {
+    const s = ALL_SPORTS[i];
+    // Skip delay for first sport; 300ms gap between requests prevents 429 rate-limiting
+    if (i > 0) await sleep(300);
     try { results[s.label] = await fetchOdds(s.key, s.regions || 'au'); }
     catch (e) { console.error(`Odds fetch failed [${s.key}]:`, e.message); results[s.label] = oddsCache[s.key]?.data || []; }
   }
