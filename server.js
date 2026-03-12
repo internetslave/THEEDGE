@@ -576,7 +576,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── AUTH ──
 app.post('/api/auth/signup', async (req, res) => {
-  let { username, pin, sport } = req.body;
+  let { username, pin, sport, email } = req.body;
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   username = username.toLowerCase().trim();
   if (username.length < 2 || username.length > 20) return res.status(400).json({ error: 'Username must be 2-20 characters' });
@@ -586,7 +586,7 @@ app.post('/api/auth/signup', async (req, res) => {
   if (users[username]) return res.status(409).json({ error: 'Username already taken' });
   const salt = genSalt(), pinHash = hashPin(pin, salt);
   const idx  = Object.keys(users).length % AVATARS.length;
-  users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], createdAt: Date.now() };
+  users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], email: (email || '').trim().toLowerCase(), createdAt: Date.now() };
   await saveUsers(users);
   const bets = await getBets();
   bets[username] = [];
@@ -605,6 +605,25 @@ app.post('/api/auth/signin', async (req, res) => {
   if (hashPin(pin, user.salt) !== user.pinHash) return res.status(401).json({ error: 'Incorrect PIN' });
   const token = createSession(username);
   res.json({ success: true, token, profile: { username, avatar: user.avatar, color: user.color, sport: user.sport } });
+});
+
+app.post('/api/auth/reset-pin', async (req, res) => {
+  let { username, email } = req.body;
+  if (!username || !email) return res.status(400).json({ error: 'Username and email required' });
+  username = username.toLowerCase().trim();
+  email    = email.trim().toLowerCase();
+  const users = await getUsers();
+  const user  = users[username];
+  if (!user || !user.email || user.email !== email) {
+    return res.status(400).json({ error: 'No account found with those details' });
+  }
+  const newPin = String(Math.floor(1000 + Math.random() * 9000));
+  const salt   = genSalt();
+  user.pinHash = hashPin(newPin, salt);
+  user.salt    = salt;
+  users[username] = user;
+  await saveUsers(users);
+  res.json({ success: true, newPin });
 });
 
 app.get('/api/auth/me', authMiddleware, async (req, res) => {

@@ -237,14 +237,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:1
 .match-odds{display:flex;gap:8px}
 .odd-btn{
   flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  padding:8px 6px;text-align:center;cursor:pointer;transition:all 0.15s;
+  padding:11px 8px;text-align:center;cursor:pointer;transition:all 0.15s;
+  min-height:52px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  user-select:none;
 }
 .odd-btn:hover{border-color:var(--accent);background:rgba(240,180,41,.06)}
 .odd-btn.value{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06)}
+.odd-btn.pressed{border-color:#f0b429;background:rgba(240,180,41,.18);box-shadow:0 0 0 3px rgba(240,180,41,.25);transform:scale(.97)}
 .odd-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
 .odd-price{font-family:var(--head);font-size:18px;font-weight:700;color:var(--text)}
 .odd-btn.value .odd-price{color:var(--green)}
 .value-flag{font-size:9px;color:var(--green);font-weight:700;letter-spacing:1px}
+/* MOTD "Why" reasons */
+.motd-why-strip{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.motd-why-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;white-space:nowrap}
+/* Pulsing confidence glow */
+@keyframes conf-pulse{0%,100%{text-shadow:0 0 6px currentColor}50%{text-shadow:0 0 18px currentColor,0 0 30px currentColor}}
+.conf-pulse{animation:conf-pulse 2s ease-in-out infinite}
+/* Forgot PIN panel */
+.forgot-panel{background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.2);border-radius:10px;padding:16px;margin-top:16px}
 
 /* ── AI ANALYSIS PANEL ── */
 .ai-panel{
@@ -576,7 +587,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
   .team-name{font-size:14px}
   .odd-price{font-size:15px}
   .match-odds{gap:5px}
-  .odd-btn{padding:7px 4px}
+  .odd-btn{padding:10px 5px;min-height:48px}
   .odd-label{font-size:9px}
   .match-header{flex-wrap:wrap;gap:4px}
 
@@ -656,20 +667,31 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <button class="login-tab" onclick="showAuthTab('signup')">Create Account</button>
     </div>
     <div id="auth-signin">
-      <div class="login-field"><label>Username</label><input type="text" id="si-user" placeholder="your username" autocomplete="username" autocapitalize="none"></div>
-      <div class="login-field"><label>4-Digit PIN</label><input type="password" id="si-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
-      <button class="login-btn" onclick="doSignIn()">SIGN IN →</button>
+      <div class="login-field"><label>Username</label><input type="text" id="si-user" placeholder="your username" autocomplete="username" autocapitalize="none" data-testid="input-username"></div>
+      <div class="login-field"><label>4-Digit PIN</label><input type="password" id="si-pin" placeholder="••••" maxlength="4" inputmode="numeric" data-testid="input-pin" onkeydown="if(event.key==='Enter')doSignIn()"></div>
+      <button class="login-btn" onclick="doSignIn()" data-testid="button-signin">SIGN IN →</button>
+      <div style="text-align:center;margin-top:14px">
+        <button onclick="toggleForgotPin()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:var(--mono)" data-testid="button-forgot-pin">Forgot your PIN?</button>
+      </div>
+      <div id="forgot-panel" class="forgot-panel" style="display:none">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#f0b429;font-family:var(--mono);margin-bottom:12px">🔑 RESET YOUR PIN</div>
+        <div class="login-field"><label>Your Username</label><input type="text" id="fp-user" placeholder="username you registered with" autocapitalize="none" data-testid="input-forgot-username"></div>
+        <div class="login-field"><label>Recovery Email</label><input type="email" id="fp-email" placeholder="email used at signup" data-testid="input-forgot-email"></div>
+        <button class="login-btn" style="background:linear-gradient(90deg,#f0b429,#f97316)" onclick="doForgotPin()" data-testid="button-reset-pin">RESET PIN →</button>
+        <div id="forgot-result" style="margin-top:10px;font-size:12px;font-family:var(--mono);line-height:1.6;min-height:18px"></div>
+      </div>
     </div>
     <div id="auth-signup" style="display:none">
-      <div class="login-field"><label>Choose a Username</label><input type="text" id="su-user" placeholder="e.g. SharpMate" autocapitalize="none"></div>
+      <div class="login-field"><label>Choose a Username</label><input type="text" id="su-user" placeholder="e.g. SharpMate" autocapitalize="none" data-testid="input-new-username"></div>
+      <div class="login-field"><label>Recovery Email <span style="color:var(--muted);font-weight:400">(for PIN resets)</span></label><input type="email" id="su-email" placeholder="your@email.com" data-testid="input-signup-email"></div>
       <div class="login-field"><label>Favourite Sport</label>
         <select id="su-sport" style="width:100%;background:#080c12;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:13px 16px;font-size:14px;font-family:var(--mono);outline:none">
           <option>AFL</option><option>NRL</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option>
         </select>
       </div>
-      <div class="login-field"><label>Choose a 4-Digit PIN</label><input type="password" id="su-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
-      <div class="login-field"><label>Confirm PIN</label><input type="password" id="su-pin2" placeholder="••••" maxlength="4" inputmode="numeric"></div>
-      <button class="login-btn" onclick="doSignUp()">CREATE ACCOUNT →</button>
+      <div class="login-field"><label>Choose a 4-Digit PIN</label><input type="password" id="su-pin" placeholder="••••" maxlength="4" inputmode="numeric" data-testid="input-new-pin"></div>
+      <div class="login-field"><label>Confirm PIN</label><input type="password" id="su-pin2" placeholder="••••" maxlength="4" inputmode="numeric" data-testid="input-confirm-pin"></div>
+      <button class="login-btn" onclick="doSignUp()" data-testid="button-signup">CREATE ACCOUNT →</button>
     </div>
     <div class="login-error" id="login-error"></div>
     <div class="login-note">🔒 Your account & bets are saved securely on the server. Share this app with mates — everyone gets their own account and competes on the leaderboard.</div>
@@ -785,9 +807,12 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 
 <!-- ══════════ MY BETS PAGE ══════════ -->
 <div id="page-mybets" class="page">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
     <div class="section-title">📋 MY BET TRACKER</div>
-    <button class="btn-primary" onclick="openBetForm()">+ LOG BET</button>
+    <div style="display:flex;gap:8px">
+      <button data-testid="button-share-stats" onclick="shareMyStats()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📤 SHARE STATS</button>
+      <button class="btn-primary" onclick="openBetForm()">+ LOG BET</button>
+    </div>
   </div>
   <div class="grid-4" id="mybets-stats" style="margin-bottom:20px"></div>
   <div class="filter-tabs" id="mybets-filters">
@@ -1529,21 +1554,21 @@ function matchCard(m) {
           </div>
         </div>`}
       <div class="match-odds">
-        ${!isRacing ? `<div class="odd-btn${m.valueBet&&m.pick===m.home?' value':''}">
+        ${!isRacing ? `<div class="odd-btn${m.valueBet&&m.pick===m.home?' value':''}" onclick="selectOdd(this,'${m.id}')">
           <div class="odd-label">${m.home.split(' ').pop()}</div>
           <div class="odd-price">${m.homeOdds}</div>
           ${m.valueBet&&m.pick===m.home?`<div class="value-flag">⚡ VALUE</div>`:''}
         </div>` : ''}
-        ${m.drawOdds ? `<div class="odd-btn">
+        ${m.drawOdds ? `<div class="odd-btn" onclick="selectOdd(this,'${m.id}')">
           <div class="odd-label">Draw</div>
           <div class="odd-price">${m.drawOdds}</div>
         </div>` : ''}
-        ${!isRacing ? `<div class="odd-btn${m.valueBet&&m.pick===m.away?' value':''}">
+        ${!isRacing ? `<div class="odd-btn${m.valueBet&&m.pick===m.away?' value':''}" onclick="selectOdd(this,'${m.id}')">
           <div class="odd-label">${m.away.split(' ').pop()}</div>
           <div class="odd-price">${m.awayOdds}</div>
           ${m.valueBet&&m.pick===m.away?`<div class="value-flag">⚡ VALUE</div>`:''}
         </div>` : ''}
-        <div class="odd-btn" style="background:rgba(240,180,41,.06);border-color:rgba(240,180,41,.3)">
+        <div class="odd-btn" style="background:rgba(240,180,41,.06);border-color:rgba(240,180,41,.3)" onclick="selectOdd(this,'${m.id}')">
           <div class="odd-label" style="color:#f0b429">${m.aiReady ? '🤖 AI PICK' : '📊 EST. PICK'}</div>
           <div class="odd-price" style="color:#f0b429;font-size:14px">${m.pick}</div>
           <div class="value-flag" style="color:${confColor(m.confidence)}">${m.confidence}% conf${m.aiReady ? '' : ' ·  loading...'}</div>
@@ -1790,6 +1815,38 @@ function renderMyBets() {
   </div>`).join('');
 
   filterBets(currentBetFilter, null);
+}
+
+function shareMyStats() {
+  const s = getStats(bets);
+  const name = currentUser?.username || 'Anonymous';
+  const sportCounts = {};
+  bets.forEach(b => { sportCounts[b.sport] = (sportCounts[b.sport]||0)+1; });
+  const topSport = Object.entries(sportCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+  const streak = calcStreak(bets);
+  const streakTxt = streak.count > 1 ? `${streak.count}-${streak.type === 'WIN' ? 'Win' : 'Loss'} Streak` : '';
+  const text = [
+    `🏆 ${name}'s EdgeIQ Betting Stats`,
+    `──────────────────`,
+    `📊 Net P&L: ${fmtPnl(s.profit)}`,
+    `✅ Win Rate: ${s.winRate}%  (${s.wins.length}W / ${s.settled.length} settled)`,
+    `💰 ROI: ${s.roi}%`,
+    `📈 Avg Odds: ${s.avgOdds}x`,
+    `🏅 Top Sport: ${topSport}`,
+    streakTxt ? `🔥 ${streakTxt}` : '',
+    `──────────────────`,
+    `Tracked on edgebets.net`
+  ].filter(Boolean).join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: `${name}'s Betting Stats`, text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('📋 Stats copied to clipboard!', false);
+    }).catch(() => {
+      showToast('⚠️ Could not copy stats', true);
+    });
+  }
 }
 
 function filterBets(sport, btn) {
@@ -2141,6 +2198,28 @@ async function requestAIAnalysis(m) {
   }
 }
 
+// ── Odds button: haptic flash then open modal ──
+function selectOdd(el, matchId) {
+  el.classList.add('pressed');
+  if (navigator.vibrate) navigator.vibrate(40);
+  setTimeout(() => {
+    el.classList.remove('pressed');
+    openMatchModal(matchId);
+  }, 160);
+}
+
+// ── Bold key terms in AI analysis text ──
+function formatAIBold(text) {
+  if (!text) return '';
+  return text
+    .replace(/([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)*):\s/g, '<strong>$1:</strong> ')
+    .replace(/(\+[\d.]+%?|\-[\d.]+%?)/g, '<strong>$1</strong>')
+    .replace(/([\d.]+%)/g, '<strong>$1</strong>')
+    .replace(/\b(WIN|LOSS|DRAW|PICK|VALUE|BET|EDGE|AVOID)\b/g, '<strong>$1</strong>')
+    .replace(/\(([^)]{3,40})\)/g, '(<em>$1</em>)')
+    .replace(/\. ([A-Z])/g, '.<br>$1');
+}
+
 function openMatchModal(matchId) {
   const m = UPCOMING.find(x=>String(x.id)===String(matchId));
   if(!m) return;
@@ -2279,7 +2358,7 @@ function openMatchModal(matchId) {
       ${ai.bettingAngle ? `
       <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px">
         <div style="font-size:10px;color:#10b981;letter-spacing:1.5px;font-weight:700;margin-bottom:4px">💡 BETTING ANGLE</div>
-        <div style="font-size:12px;color:var(--text);line-height:1.5">${ai.bettingAngle}</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7">${formatAIBold(ai.bettingAngle)}</div>
       </div>` : ''}
     </div>` : `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center">
@@ -2408,7 +2487,7 @@ function renderAIResult(a, team1, team2, sport, odds1, odds2) {
 
       <div class="ai-section">
         <div class="ai-section-title">Full Analysis</div>
-        <div class="ai-section-body">${a.reasoning}</div>
+        <div class="ai-section-body" style="line-height:1.8">${formatAIBold(a.reasoning)}</div>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:16px">
@@ -2521,6 +2600,7 @@ async function doSignIn() {
 
 async function doSignUp() {
   const username = document.getElementById('su-user').value.trim();
+  const email    = document.getElementById('su-email').value.trim();
   const sport    = document.getElementById('su-sport').value;
   const pin      = document.getElementById('su-pin').value.trim();
   const pin2     = document.getElementById('su-pin2').value.trim();
@@ -2533,7 +2613,7 @@ async function doSignUp() {
     const res  = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, pin, sport })
+      body: JSON.stringify({ username, pin, sport, email })
     });
     const data = await res.json();
     if (!res.ok) { setLoginError(data.error || 'Sign up failed'); return; }
@@ -2541,6 +2621,35 @@ async function doSignUp() {
     await loginAs(data.profile);
     migrateOldBets(data.profile.username);
   } catch(e) { console.error('signup error:', e); setLoginError('Network error — check connection'); }
+}
+
+function toggleForgotPin() {
+  const p = document.getElementById('forgot-panel');
+  const isHidden = p.style.display === 'none';
+  p.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) { document.getElementById('fp-user').focus(); document.getElementById('forgot-result').textContent = ''; }
+}
+
+async function doForgotPin() {
+  const username = document.getElementById('fp-user').value.trim();
+  const email    = document.getElementById('fp-email').value.trim();
+  const resEl    = document.getElementById('forgot-result');
+  if (!username || !email) { resEl.style.color='#ef4444'; resEl.textContent = 'Enter both username and email.'; return; }
+  resEl.style.color = 'var(--muted)';
+  resEl.textContent = 'Checking...';
+  try {
+    const res  = await fetch('/api/auth/reset-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email })
+    });
+    const data = await res.json();
+    if (!res.ok) { resEl.style.color='#ef4444'; resEl.textContent = data.error || 'No match found.'; return; }
+    resEl.style.color = '#10b981';
+    resEl.innerHTML = `✅ PIN reset! Your new PIN is: <strong style="font-size:18px;color:#f0b429;letter-spacing:4px">${data.newPin}</strong><br><span style="color:var(--muted)">Sign in now and change it in your profile.</span>`;
+    document.getElementById('si-user').value = username;
+    document.getElementById('si-pin').value  = '';
+  } catch(e) { resEl.style.color='#ef4444'; resEl.textContent = 'Network error.'; }
 }
 
 async function loginAs(profile) {
@@ -2685,8 +2794,7 @@ document.addEventListener('keydown', e=>{
 // ═══════════════════════════════════════════════════════════════════
 function getMatchOfTheDay() {
   if (!UPCOMING.length) return null;
-  // Score each match: value bet + high confidence + AI ready + soon
-  return UPCOMING
+  const candidates = UPCOMING
     .filter(m => m.aiReady)
     .map(m => {
       const hoursAway = (new Date(m.commenceTime) - Date.now()) / 3600000;
@@ -2695,9 +2803,22 @@ function getMatchOfTheDay() {
       if (m.valueBet) score += 20;
       if (m.aiReady)  score += 10;
       if (soon)       score += 15;
-      return { ...m, score };
+      return { ...m, score, hoursAway };
     })
-    .sort((a, b) => b.score - a.score)[0] || UPCOMING[0];
+    .sort((a, b) => b.score - a.score);
+  const best = candidates[0] || UPCOMING[0];
+  if (!best) return null;
+  // Build "why this is MOTD" reasons
+  const reasons = [];
+  if ((best.confidence||0) >= 75) reasons.push({ icon:'🎯', text:'High AI Confidence' });
+  if (best.valueBet)              reasons.push({ icon:'⚡', text:'Value Odds Detected' });
+  if (best.aiReady)               reasons.push({ icon:'🤖', text:'Full AI Analysis Ready' });
+  const ha = best.hoursAway ?? ((new Date(best.commenceTime) - Date.now()) / 3600000);
+  if (ha > 0 && ha < 6)          reasons.push({ icon:'⏰', text:'Starting Very Soon' });
+  else if (ha > 0 && ha < 24)    reasons.push({ icon:'📅', text:'Today\'s Match' });
+  if ((best.confidence||0) >= 85) reasons.push({ icon:'🔥', text:'Strong Betting Angle' });
+  best.motdReasons = reasons;
+  return best;
 }
 
 function renderMOTD(containerId) {
@@ -2713,6 +2834,7 @@ function renderMOTD(containerId) {
     <div class="motd-card" onclick="openMatchModal('${m.id}')">
       <div class="motd-glow"></div>
       <div class="motd-badge">⭐ MATCH OF THE DAY</div>
+      ${m.motdReasons?.length ? `<div class="motd-why-strip">${m.motdReasons.map(r=>`<span class="motd-why-pill">${r.icon} ${r.text}</span>`).join('')}</div>` : ''}
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -2725,7 +2847,7 @@ function renderMOTD(containerId) {
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">AI CONFIDENCE</div>
-          <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:${confColor(m.confidence)}">${m.confidence}%</div>
+          <div class="conf-pulse" style="font-family:var(--mono);font-size:28px;font-weight:700;color:${confColor(m.confidence)}">${m.confidence}%</div>
         </div>
       </div>
       <div class="motd-pick-row">
