@@ -1125,18 +1125,11 @@ function wmoEmoji(code) {
   return '⛈️';
 }
 async function fetchVenueWeather(venue) {
-  if (weatherCache[venue]) return weatherCache[venue];
-  let coords = VENUE_COORDS[venue];
-  if (!coords) {
-    const key = Object.keys(VENUE_COORDS).find(k => venue.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(venue.toLowerCase()));
-    coords = key ? VENUE_COORDS[key] : null;
-  }
-  if (!coords) { weatherCache[venue] = null; return null; }
+  if (venue in weatherCache) return weatherCache[venue];
   try {
-    const [lat, lng] = coords;
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto&forecast_days=1`);
+    const r = await fetch(`/api/weather?venue=${encodeURIComponent(venue)}`);
     const d = await r.json();
-    const w = { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
+    const w = d.found ? { temp: d.temp, code: d.code } : null;
     weatherCache[venue] = w;
     return w;
   } catch(e) { weatherCache[venue] = null; return null; }
