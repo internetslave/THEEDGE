@@ -43,6 +43,21 @@ AFL, NRL, NBA, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Rac
 - Sport filter system with SPORT_FILTER_MAP + matchesSportFilter()
 - Full mobile layout: bottom nav (5 items), User Sheet, More Sheet, bet cards view
 
+## Security Hardening (applied March 2026)
+- Auth brute-force protection: 10 attempts per 15 min per IP via `authRateLimit`
+- Rate limiter is per IP+endpoint, with automatic Map pruning every 10 min
+- Token accepted only from `x-session-token` header — never from URL query params
+- Constant-time PIN hash comparison prevents timing-based username enumeration
+- Generic error message "Invalid username or PIN" prevents enumeration
+- Leaderboard returns aggregate stats only (no raw bet data for other users)
+- `/api/db-test` removed; `/api/health` returns minimal ping only
+- Bets POST validates all fields (clamped ranges, max 500 bets, sanitized strings)
+- Fantasy AI has system prompt guard restricting to sports topics only
+- Comp join validates 6-char hex code with regex; caps members at 200
+- Security headers: HSTS, Permissions-Policy, X-Content-Type-Options, Referrer-Policy, CSP
+- CORS includes `edgebets.net` and `www.edgebets.net` in allowlist
+- `connect-src` CSP includes `api.open-meteo.com` (weather proxy)
+
 ## Architecture Notes
 - Express v4 (v5 breaks wildcard routes)
 - ESM modules throughout

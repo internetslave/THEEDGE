@@ -130,7 +130,8 @@ function getSession(token) {
   return s.username;
 }
 function authMiddleware(req, res, next) {
-  const username = getSession(req.headers['x-session-token'] || req.query.token);
+  // Only accept token from header — never from URL params (prevents logging in proxies/access logs)
+  const username = getSession(req.headers['x-session-token']);
   if (!username) return res.status(401).json({ error: 'Not authenticated' });
   req.username = username;
   next();
@@ -140,16 +141,34 @@ function authMiddleware(req, res, next) {
 // RATE LIMITING
 // ═══════════════════════════════════════════════════════════════════
 const rateLimitStore = new Map();
-function rateLimit(req, res, next) {
-  const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const rec = rateLimitStore.get(ip) || { count: 0, start: now };
-  if (now - rec.start > 60000) { rec.count = 1; rec.start = now; }
-  else rec.count++;
-  rateLimitStore.set(ip, rec);
-  if (rec.count > 30) return res.status(429).json({ error: 'Too many requests' });
-  next();
+
+function makeRateLimit(maxReqs, windowMs, msg = 'Too many requests — try again shortly') {
+  return (req, res, next) => {
+    const ip  = (req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown').trim();
+    const now = Date.now();
+    const key = `${ip}:${req.path}`;
+    const rec = rateLimitStore.get(key) || { count: 0, start: now };
+    if (now - rec.start > windowMs) { rec.count = 1; rec.start = now; }
+    else rec.count++;
+    rateLimitStore.set(key, rec);
+    if (rec.count > maxReqs) {
+      console.warn(`[rate-limit] ${ip} hit limit on ${req.path}`);
+      return res.status(429).json({ error: msg });
+    }
+    next();
+  };
 }
+
+// General API rate limit: 60 req/min per IP per endpoint
+const rateLimit = makeRateLimit(60, 60_000);
+// Strict auth rate limit: 10 attempts per 15 min — brute-force protection
+const authRateLimit = makeRateLimit(10, 15 * 60_000, 'Too many attempts — wait 15 minutes');
+
+// Periodically prune old entries so the map doesn't grow unbounded
+setInterval(() => {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [k, v] of rateLimitStore) { if (v.start < cutoff) rateLimitStore.delete(k); }
+}, 10 * 60_000);
 
 // ═══════════════════════════════════════════════════════════════════
 // ODDS
@@ -620,26 +639,36 @@ function queueAIAnalysis(events) { /* no-op */ }
 // ═══════════════════════════════════════════════════════════════════
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader('Content-Security-Policy',
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' https://replit.com https://*.replit.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src https://fonts.gstatic.com data:; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.anthropic.com https://api.the-odds-api.com;"
+    "connect-src 'self' https://api.anthropic.com https://api.the-odds-api.com https://api.open-meteo.com;"
   );
   next();
 });
 
+const ALLOWED_ORIGINS = new Set([
+  'https://edgebets.net', 'https://www.edgebets.net',
+]);
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const ok = !origin || origin.endsWith('.replit.app') || origin.endsWith('.repl.co') || origin.includes('localhost');
-  if (ok) {
+  const isAllowed = !origin
+    || ALLOWED_ORIGINS.has(origin)
+    || origin.endsWith('.replit.app')
+    || origin.endsWith('.repl.co')
+    || origin.includes('localhost');
+  if (isAllowed) {
     if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-session-token');
+    res.setHeader('Vary', 'Origin');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -653,18 +682,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ═══════════════════════════════════════════════════════════════════
 
 // ── AUTH ──
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', authRateLimit, async (req, res) => {
   let { username, pin, sport, email } = req.body;
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   username = username.toLowerCase().trim();
   if (username.length < 2 || username.length > 20) return res.status(400).json({ error: 'Username must be 2-20 characters' });
   if (!/^[a-z0-9_]+$/.test(username)) return res.status(400).json({ error: 'Letters, numbers and underscores only' });
   if (!/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+  if (email && email.length > 200) return res.status(400).json({ error: 'Email too long' });
   const users = await getUsers();
   if (users[username]) return res.status(409).json({ error: 'Username already taken' });
   const salt = genSalt(), pinHash = hashPin(pin, salt);
   const idx  = Object.keys(users).length % AVATARS.length;
-  users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], email: (email || '').trim().toLowerCase(), createdAt: Date.now() };
+  users[username] = { pinHash, salt, sport: sport || 'AFL', avatar: AVATARS[idx], color: COLORS[idx], email: (email || '').trim().toLowerCase().substring(0, 200), createdAt: Date.now() };
   await saveUsers(users);
   const bets = await getBets();
   bets[username] = [];
@@ -673,27 +703,34 @@ app.post('/api/auth/signup', async (req, res) => {
   res.json({ success: true, token, profile: { username, avatar: users[username].avatar, color: users[username].color, sport: users[username].sport } });
 });
 
-app.post('/api/auth/signin', async (req, res) => {
+app.post('/api/auth/signin', authRateLimit, async (req, res) => {
   let { username, pin } = req.body;
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   username = username.toLowerCase().trim();
+  if (username.length > 20) return res.status(400).json({ error: 'Invalid credentials' });
   const users = await getUsers();
   const user  = users[username];
-  if (!user) return res.status(404).json({ error: 'Account not found' });
-  if (hashPin(pin, user.salt) !== user.pinHash) return res.status(401).json({ error: 'Incorrect PIN' });
+  // Always run hashPin even if user not found — prevents timing-based enumeration
+  const dummySalt = 'ffffffffffffffffffffffffffffffff';
+  const provided  = hashPin(String(pin).substring(0, 10), user ? user.salt : dummySalt);
+  if (!user || provided !== user.pinHash) {
+    return res.status(401).json({ error: 'Invalid username or PIN' });
+  }
   const token = createSession(username);
   res.json({ success: true, token, profile: { username, avatar: user.avatar, color: user.color, sport: user.sport } });
 });
 
-app.post('/api/auth/reset-pin', async (req, res) => {
+app.post('/api/auth/reset-pin', authRateLimit, async (req, res) => {
   let { username, email } = req.body;
   if (!username || !email) return res.status(400).json({ error: 'Username and email required' });
   username = username.toLowerCase().trim();
+  if (username.length > 20) return res.status(400).json({ error: 'No account found with those details' });
   email    = email.trim().toLowerCase();
   const users = await getUsers();
   const user  = users[username];
+  // Always return same message to prevent user+email enumeration
   if (!user || !user.email || user.email !== email) {
-    return res.status(400).json({ error: 'No account found with those details' });
+    return res.status(200).json({ success: true, message: 'If that account exists, your new PIN has been generated.' });
   }
   const newPin = String(Math.floor(1000 + Math.random() * 9000));
   const salt   = genSalt();
@@ -722,11 +759,32 @@ app.get('/api/bets', authMiddleware, async (req, res) => {
   res.json({ success: true, bets: bets[req.username] || [] });
 });
 
+const VALID_RESULTS  = new Set(['win', 'loss', 'push', 'pending']);
+const VALID_SPORTS   = new Set(['AFL', 'NRL', 'NBA', 'Soccer', 'UFC', 'Boxing', 'Horse Racing', 'Greyhound', 'Other']);
+const MAX_BETS       = 500;
+
 app.post('/api/bets', authMiddleware, async (req, res) => {
   const { bets: newBets } = req.body;
   if (!Array.isArray(newBets)) return res.status(400).json({ error: 'bets must be an array' });
+  if (newBets.length > MAX_BETS) return res.status(400).json({ error: `Maximum ${MAX_BETS} bets` });
+  const clean = newBets.map(b => {
+    if (!b || typeof b !== 'object') return null;
+    const stake  = Math.max(0, Math.min(1_000_000, Number(b.stake)  || 0));
+    const odds   = Math.max(1, Math.min(1000,      Number(b.odds)   || 1));
+    const result = VALID_RESULTS.has(b.result) ? b.result : 'pending';
+    return {
+      id:        String(b.id   || '').substring(0, 64),
+      match:     String(b.match || '').substring(0, 120),
+      team:      String(b.team  || '').substring(0, 60),
+      sport:     VALID_SPORTS.has(b.sport) ? b.sport : 'Other',
+      stake, odds, result,
+      date:      typeof b.date === 'string' ? b.date.substring(0, 30) : new Date().toISOString(),
+      label:     String(b.label || '').substring(0, 120),
+      notes:     String(b.notes || '').substring(0, 300),
+    };
+  }).filter(Boolean);
   const bets = await getBets();
-  bets[req.username] = newBets;
+  bets[req.username] = clean;
   await saveBets(bets);
   res.json({ success: true });
 });
@@ -735,7 +793,29 @@ app.post('/api/bets', authMiddleware, async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   const users = await getUsers();
   const bets  = await getBets();
-  res.json({ success: true, entries: Object.keys(users).map(u => ({ username: u, avatar: users[u].avatar, color: users[u].color, bets: bets[u] || [] })) });
+  const entries = Object.keys(users).map(u => {
+    const userBets = bets[u] || [];
+    // Only expose aggregate stats — never the raw bet array
+    const settled = userBets.filter(b => b.result && b.result !== 'pending');
+    const wins    = settled.filter(b => b.result === 'win').length;
+    const totalStake  = settled.reduce((s, b) => s + (Number(b.stake) || 0), 0);
+    const totalReturn = settled.filter(b => b.result === 'win').reduce((s, b) => s + ((Number(b.stake) || 0) * (Number(b.odds) || 1)), 0);
+    return {
+      username: u,
+      avatar:   users[u].avatar,
+      color:    users[u].color,
+      totalBets: userBets.length,
+      settled:   settled.length,
+      wins,
+      losses:    settled.length - wins,
+      winRate:   settled.length ? Math.round((wins / settled.length) * 100) : 0,
+      totalStake: Math.round(totalStake * 100) / 100,
+      roi: totalStake > 0 ? Math.round(((totalReturn - totalStake) / totalStake) * 1000) / 10 : 0,
+      // Include last 5 bet results only (no amounts, no match details) for leaderboard display
+      recentResults: userBets.slice(-5).map(b => b.result || 'pending'),
+    };
+  });
+  res.json({ success: true, entries });
 });
 
 // ── ODDS ──
@@ -807,17 +887,9 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
   } catch { res.status(500).json({ success: false, error: 'Analysis failed' }); }
 });
 
-// ── DB TEST ──
-app.get('/api/db-test', async (req, res) => {
-  res.json({
-    hasKey: !!JSONBIN_KEY, hasBinId: !!JSONBIN_BIN_ID,
-    storeLoaded, userCount: Object.keys(store.users).length
-  });
-});
-
-// ── HEALTH ──
+// ── HEALTH — public minimal ping only ──
 app.get('/api/health', (req, res) => {
-  res.json({ status:'ok', db: !!(JSONBIN_KEY && JSONBIN_BIN_ID), storeLoaded, users: Object.keys(store.users).length, aiEnabled:!!ANTHROPIC_API_KEY, aiCached:Object.keys(aiCache).length, time:new Date().toISOString() });
+  res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -895,10 +967,12 @@ app.get('/api/tipping/leaderboard', async (req, res) => {
 });
 
 app.get('/api/tipping/round-results', async (req, res) => {
+  const round = String(req.query.round || '').substring(0, 80);
+  if (!round) return res.status(400).json({ error: 'round required' });
   const t  = await getTipping();
-  const rd = t.rounds[req.query.round];
+  const rd = t.rounds[round];
   if (!rd) return res.status(404).json({ error: 'Round not found' });
-  res.json({ round: req.query.round, fixtures: rd.fixtures, results: rd.results || {} });
+  res.json({ round, fixtures: rd.fixtures, results: rd.results || {} });
 });
 
 app.post('/api/tipping/comps/create', authMiddleware, async (req, res) => {
@@ -916,15 +990,18 @@ app.post('/api/tipping/comps/create', authMiddleware, async (req, res) => {
 app.post('/api/tipping/comps/join', authMiddleware, async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Code required' });
+  const cleanCode = String(code).toUpperCase().trim();
+  if (!/^[A-F0-9]{6}$/.test(cleanCode)) return res.status(400).json({ error: 'Invalid comp code format' });
   const comps = await getComps();
-  const comp = comps.comps[code.toUpperCase()];
+  const comp = comps.comps[cleanCode];
   if (!comp) return res.status(404).json({ error: 'Comp not found — check your code' });
   if (comp.members.includes(req.username)) return res.status(400).json({ error: 'Already in this comp' });
+  if (comp.members.length >= 200) return res.status(400).json({ error: 'Comp is full (max 200 members)' });
   comp.members.push(req.username);
   if (!comps.memberships[req.username]) comps.memberships[req.username] = [];
-  comps.memberships[req.username].push(code.toUpperCase());
+  comps.memberships[req.username].push(cleanCode);
   await saveComps(comps);
-  res.json({ success:true, comp });
+  res.json({ success: true, comp: { code: comp.code, name: comp.name, sport: comp.sport, members: comp.members.length } });
 });
 
 app.get('/api/tipping/comps/mine', authMiddleware, async (req, res) => {
@@ -985,16 +1062,25 @@ app.post('/api/tipping/admin/set-role', async (req, res) => {
 });
 
 // ── FANTASY AI PROXY ──
+const FANTASY_SYSTEM = 'You are a sports fantasy and betting analysis assistant for EdgeIQ. You only answer questions related to sports, fantasy sports, betting strategy, player analysis, and match previews. If asked about anything outside sports — politics, harmful content, personal data, code exploits, or any other off-topic subject — politely decline and redirect to sports topics.';
+
 app.post('/api/fantasy/ask', rateLimit, authMiddleware, async (req, res) => {
   if (!ANTHROPIC_API_KEY) return res.status(503).json({ success: false, error: 'AI not configured' });
-  const { prompt, title } = req.body;
+  const { prompt } = req.body;
   if (!prompt || typeof prompt !== 'string') return res.status(400).json({ success: false, error: 'Prompt required' });
-  if (prompt.length > 3000) return res.status(400).json({ success: false, error: 'Prompt too long' });
+  const trimmed = prompt.trim();
+  if (trimmed.length === 0) return res.status(400).json({ success: false, error: 'Prompt required' });
+  if (trimmed.length > 2000) return res.status(400).json({ success: false, error: 'Prompt too long (max 2000 chars)' });
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        system: FANTASY_SYSTEM,
+        messages: [{ role: 'user', content: trimmed }]
+      })
     });
     if (!r.ok) {
       console.error('Anthropic API error:', r.status);

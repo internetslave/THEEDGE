@@ -3090,49 +3090,47 @@ showLbSport = async function(sport, btn) {
   try {
     const r = await fetch('/api/leaderboard');
     const d = await r.json();
-    const allEntries = d.entries || [];
+    const allEntries = (d.entries || []).filter(e => e.totalBets > 0).sort((a,b) => b.roi - a.roi);
 
-    // Render extras (weekly winner, upsets, etc.)
+    // Render aggregate extras (best ROI, most wins, streak)
     renderLbExtras(allEntries);
-
-    const entries = allEntries.map(e => {
-      const sb = sport==='overall' ? e.bets : e.bets.filter(b=>b.sport===sport);
-      const s  = getStats(sb);
-      const streak = calcStreak(e.bets || []);
-      return { ...e, profit:s.profit, roi:s.roi, winRate:s.winRate, betCount:sb.length, wins:s.wins.length, streak };
-    }).sort((a,b)=>b.profit-a.profit);
 
     const rankEmoji  = ['🥇','🥈','🥉'];
     const rankColors = ['#f0b429','#c9d6df','#f97316'];
 
-    document.getElementById('lb-content').innerHTML = entries.length < 2
+    document.getElementById('lb-content').innerHTML = allEntries.length < 2
       ? `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:28px;text-align:center">
           <div style="font-size:36px;margin-bottom:12px">👥</div>
           <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;margin-bottom:8px">WAITING FOR YOUR MATES</div>
-          <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:16px">Share this app with your friends. Each person creates their own account and their P&L appears here automatically.</div>
+          <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:16px">Share this app with your friends. Each person creates their own account and their stats appear here automatically.</div>
           <div style="font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px">${window.location.origin}</div>
         </div>`
-      : entries.map((e,i)=>{
+      : allEntries.map((e,i)=>{
           const isMe = e.username === currentUser?.username;
-          const pos  = e.profit >= 0;
-          // Streak badge
+          const pos  = e.roi >= 0;
+          // Derive streak from recentResults
           let streakBadge = '';
-          if (e.streak.count >= 2) {
-            const isWin = e.streak.type === 'WIN';
-            const icon  = isWin ? '🔥' : '🥶';
-            const color = isWin ? 'rgba(240,180,41,.15)' : 'rgba(99,102,241,.15)';
-            const border = isWin ? 'rgba(240,180,41,.3)' : 'rgba(99,102,241,.3)';
-            const textCol = isWin ? '#f0b429' : '#818cf8';
-            streakBadge = `<span class="streak-badge" style="background:${color};border:1px solid ${border};color:${textCol}">${icon} ${e.streak.count} ${isWin?'W':'L'}</span>`;
+          if (e.recentResults?.length >= 2) {
+            const last  = e.recentResults[e.recentResults.length - 1];
+            let cnt = 0;
+            for (let j = e.recentResults.length - 1; j >= 0 && e.recentResults[j] === last; j--) cnt++;
+            if (cnt >= 2) {
+              const isWin  = last === 'win';
+              const icon   = isWin ? '🔥' : '🥶';
+              const color  = isWin ? 'rgba(240,180,41,.15)' : 'rgba(99,102,241,.15)';
+              const border = isWin ? 'rgba(240,180,41,.3)' : 'rgba(99,102,241,.3)';
+              const textCol = isWin ? '#f0b429' : '#818cf8';
+              streakBadge = `<span class="streak-badge" style="background:${color};border:1px solid ${border};color:${textCol}">${icon} ${cnt} ${isWin?'W':'L'}</span>`;
+            }
           }
           return `<div class="lb-card" ${isMe?'style="border-color:rgba(240,180,41,.3);background:linear-gradient(90deg,rgba(240,180,41,.04),var(--bg3))"':''}>
             <div class="lb-rank" style="color:${i<3?rankColors[i]:'var(--muted)'}">${i<3?rankEmoji[i]:'#'+(i+1)}</div>
             <div class="lb-avatar" style="background:${e.color}18;border:1px solid ${e.color}40">${e.avatar}</div>
             <div class="lb-info">
               <div class="lb-name" style="color:${e.color}">${e.username.toUpperCase()}${isMe?'<span class="lb-you">YOU</span>':''}${streakBadge}</div>
-              <div class="lb-meta">${e.betCount} bets · ${e.wins} wins · ${e.winRate}% WR · ROI ${e.roi}%</div>
+              <div class="lb-meta">${e.totalBets} bets · ${e.wins} wins · ${e.winRate}% WR · ROI ${e.roi}%</div>
             </div>
-            <div class="lb-pnl" style="color:${pos?'#10b981':'#ef4444'}">${fmtPnl(e.profit)}</div>
+            <div class="lb-pnl" style="color:${pos?'#10b981':'#ef4444'}">${e.roi >= 0 ? '+' : ''}${e.roi}%</div>
           </div>`;
         }).join('');
   } catch(e) {
@@ -3267,113 +3265,46 @@ function getWeekStart() {
   return monday;
 }
 
-function getWeeklyProfit(userBets) {
-  const weekStart = getWeekStart();
-  const weekBets = userBets.filter(b => new Date(b.date) >= weekStart && b.result !== 'PENDING');
-  return weekBets.reduce((sum, b) => sum + calcPnl(b), 0);
-}
-
-function getBiggestUpset(allEntries) {
-  // Highest odds winner this week
-  const weekStart = getWeekStart();
-  let best = null;
-  for (const e of allEntries) {
-    const weekWins = (e.bets || []).filter(b =>
-      b.result === 'WIN' && new Date(b.date) >= weekStart && b.odds >= 3.0
-    );
-    for (const b of weekWins) {
-      if (!best || b.odds > best.odds) best = { ...b, username: e.username, avatar: e.avatar, color: e.color };
-    }
-  }
-  return best;
-}
-
-function getBiggestLoss(allEntries) {
-  const weekStart = getWeekStart();
-  let worst = null;
-  for (const e of allEntries) {
-    const weekLosses = (e.bets || []).filter(b =>
-      b.result === 'LOSS' && new Date(b.date) >= weekStart
-    );
-    for (const b of weekLosses) {
-      if (!worst || b.stake > worst.stake) worst = { ...b, username: e.username, avatar: e.avatar, color: e.color };
-    }
-  }
-  return worst;
-}
-
-function getBestROI(allEntries) {
-  let best = null;
-  for (const e of allEntries) {
-    const s = getStats(e.bets || []);
-    const roi = parseFloat(s.roi);
-    if (s.settled.length >= 3 && (!best || roi > parseFloat(getStats(best.bets||[]).roi))) {
-      best = e;
-    }
-  }
-  return best;
-}
-
 async function renderLbExtras(allEntries) {
   const el = document.getElementById('lb-extras');
-  if (!el) return;
+  if (!el || !allEntries.length) { if (el) el.innerHTML = ''; return; }
 
-  // Weekly winner
-  const weeklyRanked = allEntries
-    .map(e => ({ ...e, weekProfit: getWeeklyProfit(e.bets || []) }))
-    .filter(e => e.weekProfit !== 0)
-    .sort((a, b) => b.weekProfit - a.weekProfit);
-  const weeklyWinner = weeklyRanked[0];
-
-  // Biggest upset
-  const upset = getBiggestUpset(allEntries);
-
-  // Biggest loss (hall of shame)
-  const bigLoss = getBiggestLoss(allEntries);
-
-  // Best ROI
-  const bestROI = getBestROI(allEntries);
-
+  const qualified = allEntries.filter(e => e.settled >= 3);
   const cards = [];
 
-  if (weeklyWinner && weeklyWinner.weekProfit > 0) {
-    cards.push(`
-      <div class="lb-extra-card" style="border-color:rgba(240,180,41,.3);background:linear-gradient(135deg,rgba(240,180,41,.06),var(--bg3))">
-        <div class="lb-extra-icon">🏆</div>
-        <div class="lb-extra-label">Weekly Winner</div>
-        <div class="lb-extra-name" style="color:${weeklyWinner.color}">${weeklyWinner.avatar} ${weeklyWinner.username.toUpperCase()}</div>
-        <div class="lb-extra-sub">+${fmt$(weeklyWinner.weekProfit)} this week</div>
-      </div>`);
-  }
-
-  if (upset) {
-    cards.push(`
-      <div class="lb-extra-card" style="border-color:rgba(16,185,129,.25)">
-        <div class="lb-extra-icon">💥</div>
-        <div class="lb-extra-label">Biggest Upset This Week</div>
-        <div class="lb-extra-name" style="color:${upset.color}">${upset.avatar} ${upset.username.toUpperCase()}</div>
-        <div class="lb-extra-sub">${upset.bet} @ ${upset.odds}x — won ${fmt$(calcPnl(upset))}</div>
-      </div>`);
-  }
-
-  if (bigLoss) {
-    cards.push(`
-      <div class="lb-extra-card" style="border-color:rgba(239,68,68,.2)">
-        <div class="lb-extra-icon">📉</div>
-        <div class="lb-extra-label">Hall of Shame</div>
-        <div class="lb-extra-name" style="color:${bigLoss.color}">${bigLoss.avatar} ${bigLoss.username.toUpperCase()}</div>
-        <div class="lb-extra-sub">${bigLoss.bet} — lost ${fmt$(bigLoss.stake)}</div>
-      </div>`);
-  }
-
-  if (bestROI) {
-    const roi = getStats(bestROI.bets||[]).roi;
+  // Top ROI
+  const topROI = [...qualified].sort((a,b) => b.roi - a.roi)[0];
+  if (topROI && topROI.roi > 0) {
     cards.push(`
       <div class="lb-extra-card" style="border-color:rgba(59,130,246,.25)">
         <div class="lb-extra-icon">🎯</div>
         <div class="lb-extra-label">Best ROI</div>
-        <div class="lb-extra-name" style="color:${bestROI.color}">${bestROI.avatar} ${bestROI.username.toUpperCase()}</div>
-        <div class="lb-extra-sub">${roi}% return on investment</div>
+        <div class="lb-extra-name" style="color:${topROI.color}">${topROI.avatar} ${topROI.username.toUpperCase()}</div>
+        <div class="lb-extra-sub">+${topROI.roi}% return · ${topROI.settled} bets settled</div>
+      </div>`);
+  }
+
+  // Highest win rate
+  const topWR = [...qualified].sort((a,b) => b.winRate - a.winRate)[0];
+  if (topWR && topWR !== topROI) {
+    cards.push(`
+      <div class="lb-extra-card" style="border-color:rgba(240,180,41,.3);background:linear-gradient(135deg,rgba(240,180,41,.06),var(--bg3))">
+        <div class="lb-extra-icon">🏆</div>
+        <div class="lb-extra-label">Sharpest Punter</div>
+        <div class="lb-extra-name" style="color:${topWR.color}">${topWR.avatar} ${topWR.username.toUpperCase()}</div>
+        <div class="lb-extra-sub">${topWR.winRate}% win rate · ${topWR.wins}/${topWR.settled} correct</div>
+      </div>`);
+  }
+
+  // Most bets placed
+  const mostActive = [...allEntries].sort((a,b) => b.totalBets - a.totalBets)[0];
+  if (mostActive && mostActive.totalBets >= 5) {
+    cards.push(`
+      <div class="lb-extra-card" style="border-color:rgba(16,185,129,.25)">
+        <div class="lb-extra-icon">⚡</div>
+        <div class="lb-extra-label">Most Active</div>
+        <div class="lb-extra-name" style="color:${mostActive.color}">${mostActive.avatar} ${mostActive.username.toUpperCase()}</div>
+        <div class="lb-extra-sub">${mostActive.totalBets} bets logged</div>
       </div>`);
   }
 
