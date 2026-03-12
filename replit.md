@@ -22,15 +22,17 @@ A sports betting intelligence dashboard at edgebets.net that fetches live odds f
 - `PORT` — Server port (defaults to 5000)
 
 ## Sports Covered
-AFL, NRL, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Racing
+AFL, NRL, NBA, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Racing
 
 ## Key Features
-- Live odds with 15-minute cache + combined cache layer
+- Live odds with 6-hour cache + combined cache layer (credit-efficient)
+- Per-sport regional bookmaker config: AU for local sports, AU+US for NBA/UFC/Boxing, AU+UK for EPL
 - Real horse racing data via The Racing API (theracingapi.com) with 15-min cache
   - Fetches AU meets for today+tomorrow, real runners with jockey/trainer/form/odds
   - Falls back to seeded-RNG generated data if API credentials not configured
   - Greyhound data always uses fallback generator (Racing API has no greyhound coverage)
 - AI match analysis (Claude Haiku, 3hr TTL, top 10 soonest matches queued)
+  - Sport-specific context injected into every prompt (NBA pace/rest/stars, AFL clearances, etc.)
 - Value bet detection
 - Bet logging with P&L tracking
 - Multi-user auth with JSONBin.io persistence
@@ -39,6 +41,7 @@ AFL, NRL, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Racing
 - Fantasy AI advisor (proxied through server, not direct browser calls)
 - Mobile-optimized share button (native share + clipboard fallback)
 - Sport filter system with SPORT_FILTER_MAP + matchesSportFilter()
+- Full mobile layout: bottom nav (5 items), User Sheet, More Sheet, bet cards view
 
 ## Architecture Notes
 - Express v4 (v5 breaks wildcard routes)

@@ -160,17 +160,18 @@ let combinedOddsCache = { data: null, ts: 0 };
 let oddsApiCreditsRemaining = null;  // tracked from response headers
 
 const ALL_SPORTS = [
-  { key: 'aussierules_afl',         label: 'afl'       },
-  { key: 'rugbyleague_nrl',          label: 'nrl'       },
-  { key: 'soccer_australia_aleague', label: 'soccer_al' },
-  { key: 'soccer_epl',               label: 'soccer_epl'},
-  { key: 'mma_mixed_martial_arts',   label: 'ufc'       },
-  { key: 'boxing_boxing',            label: 'boxing'    },
+  { key: 'aussierules_afl',         label: 'afl',        regions: 'au'    },
+  { key: 'rugbyleague_nrl',          label: 'nrl',        regions: 'au'    },
+  { key: 'soccer_australia_aleague', label: 'soccer_al',  regions: 'au'    },
+  { key: 'soccer_epl',               label: 'soccer_epl', regions: 'au,uk' },
+  { key: 'mma_mixed_martial_arts',   label: 'ufc',        regions: 'au,us' },
+  { key: 'boxing_boxing',            label: 'boxing',     regions: 'au,us' },
+  { key: 'basketball_nba',           label: 'nba',        regions: 'au,us' },
 ];
 
-async function fetchOdds(sport) {
+async function fetchOdds(sport, regions = 'au') {
   if (oddsCache[sport] && Date.now() - oddsCache[sport].ts < ODDS_TTL) return oddsCache[sport].data;
-  const r = await fetch(`${ODDS_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=au&markets=h2h&oddsFormat=decimal`);
+  const r = await fetch(`${ODDS_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=${regions}&markets=h2h&oddsFormat=decimal`);
   if (!r.ok) throw new Error(`Odds API ${r.status}`);
   // Track remaining credits from headers
   const remaining = r.headers.get('x-requests-remaining');
@@ -188,7 +189,7 @@ async function fetchAllOdds() {
   if (combinedOddsCache.data && Date.now() - combinedOddsCache.ts < ODDS_TTL) return combinedOddsCache.data;
   const results = {};
   for (const s of ALL_SPORTS) {
-    try { results[s.label] = await fetchOdds(s.key); }
+    try { results[s.label] = await fetchOdds(s.key, s.regions || 'au'); }
     catch (e) { console.error(`Odds fetch failed [${s.key}]:`, e.message); results[s.label] = oddsCache[s.key]?.data || []; }
   }
   combinedOddsCache = { data: results, ts: Date.now() };
@@ -480,6 +481,68 @@ const aiCache = {};
 const aiQueue = [];
 let aiBusy = false;
 
+function getSportContext(sport) {
+  const contexts = {
+    'NBA': `NBA SPECIFIC CONTEXT — Key factors to analyse:
+- Pace & efficiency: offensive/defensive rating, points per 100 possessions
+- Home court advantage (NBA teams historically win ~60% at home)
+- Back-to-back games and rest days (huge impact — teams on 0 rest days lose ~5% more)
+- Star player availability & load management (top-5 players on each team are decisive)
+- Recent 3-point shooting efficiency (hot/cold shooting streaks)
+- Paint dominance vs perimeter attack matchup
+- Referee tendencies (foul rate impact on star players)
+- Conference record and divisional familiarity
+- Clutch performance: record in games within 5 points in final 5 minutes
+Use NBA stat terminology: PPG, APG, RPG, eFG%, TS%, Net Rating, +/-.
+Reference current season stats and recent form from 2024-25 NBA season.`,
+    'AFL': `AFL SPECIFIC CONTEXT — Key factors to analyse:
+- Clearance differential (most predictive AFL stat)
+- Contested possessions and inside 50s
+- Interstate travel fatigue (WAFL, Queensland teams)
+- MCG specialists vs away records
+- Key position matchups: tall forwards vs backlines
+- Weather conditions (wind/rain heavily affects scoring)
+- Recent scoring: average score and opponent average score conceded
+Use AFL stat terminology: disposals, handballs, kicks, marks, clearances, inside 50s.`,
+    'NRL': `NRL SPECIFIC CONTEXT — Key factors to analyse:
+- Completion rate and error count (critical in NRL)
+- Post-State of Origin player fatigue/absence
+- Home ground advantage (NRL is highly home-ground dependent)
+- Key playmaker availability (halfback/five-eighth)
+- Defensive line speed and completion rate
+- Penalties and discipline
+- NSWRL vs QRL representative commitments
+Use NRL stat terminology: tries, line breaks, tackles made, errors, penalties.`,
+    'Soccer': `SOCCER SPECIFIC CONTEXT — Key factors to analyse:
+- Clean sheet probability and defensive record
+- Head-to-head at this specific venue
+- Squad rotation and Europa/Champions League fatigue
+- xG (expected goals) vs actual goals — is form sustainable?
+- Set piece efficiency (corners, free kicks)
+- Manager tactical matchup
+- Home/away splits are dramatic in soccer
+Use soccer analytics: xG, xGA, PPDA, possession %, shots on target.`,
+    'UFC': `UFC/MMA SPECIFIC CONTEXT — Key factors to analyse:
+- Striking accuracy and takedown defence %
+- Finish rate and method of victory tendencies
+- Recent performance bonus history (activity/aggression)
+- Camp and gym (training partner quality)
+- Weight cut history and late notice replacements
+- Reach and physical advantages
+- Judges tendencies at this venue
+Use MMA stats: significant strikes per minute, takedown %, submission attempts.`,
+    'Boxing': `BOXING SPECIFIC CONTEXT — Key factors to analyse:
+- Power punching vs volume punching styles
+- KO/TKO rate and chin durability
+- Ring rust (time away from boxing)
+- Promotional politics and judge bias concerns
+- Weight class move history
+- Trainer pedigree and camp quality
+Use boxing stats: punches landed per round, knockdown ratio, reach, southpaw/orthodox matchup.`,
+  };
+  return contexts[sport] || '';
+}
+
 async function analyseMatch(ev) {
   if (!ANTHROPIC_API_KEY) return null;
   if (isFresh(aiCache, ev.id, AI_TTL)) return aiCache[ev.id].data;
@@ -487,13 +550,14 @@ async function analyseMatch(ev) {
     const home = ev.home, away = ev.away, sport = ev.sport;
     const oddsLine = `${home} @ ${ev.homeOdds}, ${away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ''}`;
     const recOptions = ev.drawOdds ? `"${home}", "${away}", or "Draw"` : `"${home}" or "${away}"`;
+    const sportCtx = getSportContext(sport);
 
-    const prompt = `You are a sharp Australian sports betting analyst. Analyse this match and return ONLY a JSON object — no markdown, no explanation outside the JSON.
+    const prompt = `You are a sharp sports betting analyst covering Australian and international markets. Analyse this match and return ONLY a JSON object — no markdown, no explanation outside the JSON.
 
 MATCH: ${home} vs ${away}
 SPORT: ${sport}
 ODDS: ${oddsLine}
-
+${sportCtx ? `\n${sportCtx}\n` : ''}
 Draw on your knowledge of these teams/competitions to produce SPECIFIC, REALISTIC analysis. Use real team form, real head-to-head history, real venue stats, real injury context, real betting patterns. Be specific — use actual numbers, scorelines, and player names where you know them.
 
 Return this exact JSON structure with ALL fields filled in:
@@ -508,14 +572,14 @@ Return this exact JSON structure with ALL fields filled in:
     "away": "<${away} last 5 results e.g. L W W L W — with a specific note about their current momentum, scoring avg, or key players>"
   },
   "headToHead": "<Specific H2H record between these teams, e.g. '${home} have won 7 of the last 10 meetings. They won the most recent clash 22-14 in Round 18 last season.' Include actual recent results if known.>",
-  "venueEdge": "<Specific venue/travel advantage or disadvantage, e.g. '${home} are 8-2 at home this season and have not lost at this ground since Round 4 last year. ${away} have travelled interstate 3 times this season winning only once.'>",
+  "venueEdge": "<Specific venue/home court advantage or disadvantage, referencing the actual arena/stadium, home record this season, and any travel/scheduling factors for ${away}>",
   "keyFactors": [
-    {"icon": "⚡", "label": "Key Reason", "value": "<The single most decisive factor — e.g. 'Collingwood's midfield dominance: averaging +12 clearances per game over last 5 rounds'>"},
-    {"icon": "📊", "label": "Form Edge", "value": "<Specific form stat — e.g. '${home} have won 4 straight, averaging 94 pts. ${away} lost 3 of last 4, conceding 80+ each time'>"},
-    {"icon": "🏟️", "label": "Venue", "value": "<Home/away specific insight — e.g. 'Bulldogs are 6-1 at Marvel this season; Giants have lost all 3 interstate trips in 2025'>"},
-    {"icon": "⚠️", "label": "Risk", "value": "<Main risk to the pick — e.g. 'Tim English is a late out, weakening the Bulldogs ruck by 20%'>"}
+    {"icon": "⚡", "label": "Key Reason", "value": "<The single most decisive factor — use sport-specific stats and player names>"},
+    {"icon": "📊", "label": "Form Edge", "value": "<Specific form stat with numbers — scoring averages, recent results, efficiency metrics>"},
+    {"icon": "🏟️", "label": "Venue / Schedule", "value": "<Home court/ground advantage with specific record, and any back-to-back or travel fatigue>"},
+    {"icon": "⚠️", "label": "Risk", "value": "<Main risk to the pick — injury, player availability, hot opponent form, or statistical anomaly>"}
   ],
-  "bettingAngle": "<One sharp betting insight e.g. '${home} as home favourites are 9-1 this season — the market is pricing them correctly but there's line value in the -12.5 handicap given their recent scoring dominance.'>"
+  "bettingAngle": "<One sharp betting insight referencing the specific odds above — e.g. line value, market inefficiency, or why the favourite/underdog price is correct or incorrect given specific stats.>"
 }`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -672,7 +736,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/odds', rateLimit, async (req, res) => {
   try {
     const raw = await fetchAllOdds();
-    const sportLabels = { afl:'AFL', nrl:'NRL', soccer_al:'Soccer', soccer_epl:'Soccer', ufc:'UFC', boxing:'Boxing' };
+    const sportLabels = { afl:'AFL', nrl:'NRL', soccer_al:'Soccer', soccer_epl:'Soccer', ufc:'UFC', boxing:'Boxing', nba:'NBA' };
     const events = [];
     for (const [key, evList] of Object.entries(raw)) {
       for (const ev of (evList || [])) {

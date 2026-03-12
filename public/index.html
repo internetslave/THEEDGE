@@ -752,7 +752,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <div class="login-field"><label>Recovery Email <span style="color:var(--muted);font-weight:400">(for PIN resets)</span></label><input type="email" id="su-email" placeholder="your@email.com" data-testid="input-signup-email"></div>
       <div class="login-field"><label>Favourite Sport</label>
         <select id="su-sport" style="width:100%;background:#080c12;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:13px 16px;font-size:14px;font-family:var(--mono);outline:none">
-          <option>AFL</option><option>NRL</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option>
+          <option>AFL</option><option>NRL</option><option>NBA</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option>
         </select>
       </div>
       <div class="login-field"><label>Choose a 4-Digit PIN</label><input type="password" id="su-pin" placeholder="••••" maxlength="4" inputmode="numeric" data-testid="input-new-pin"></div>
@@ -807,6 +807,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
   <button class="sport-chip active" onclick="setSport('all')" data-sport="all"><span class="sport-icon">🎯</span>All Sports</button>
   <button class="sport-chip" onclick="setSport('afl')" data-sport="afl"><span class="sport-icon">🏉</span>AFL</button>
   <button class="sport-chip" onclick="setSport('nrl')" data-sport="nrl"><span class="sport-icon">🏈</span>NRL</button>
+  <button class="sport-chip" onclick="setSport('nba')" data-sport="nba"><span class="sport-icon">🏀</span>NBA</button>
   <button class="sport-chip" onclick="setSport('soccer')" data-sport="soccer"><span class="sport-icon">⚽</span>Soccer</button>
   <button class="sport-chip" onclick="setSport('ufc')" data-sport="ufc"><span class="sport-icon">🥊</span>UFC/MMA</button>
   <button class="sport-chip" onclick="setSport('boxing')" data-sport="boxing"><span class="sport-icon">🥋</span>Boxing</button>
@@ -893,6 +894,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
     <button class="filter-tab active" onclick="filterBets('ALL',this)">All</button>
     <button class="filter-tab" onclick="filterBets('AFL',this)">AFL</button>
     <button class="filter-tab" onclick="filterBets('NRL',this)">NRL</button>
+    <button class="filter-tab" onclick="filterBets('NBA',this)">🏀 NBA</button>
     <button class="filter-tab" onclick="filterBets('Soccer',this)">Soccer</button>
     <button class="filter-tab" onclick="filterBets('UFC',this)">UFC</button>
     <button class="filter-tab" onclick="filterBets('Boxing',this)">Boxing</button>
@@ -926,6 +928,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <button class="filter-tab active" onclick="showLbSport('overall',this)">Overall</button>
       <button class="filter-tab" onclick="showLbSport('AFL',this)">AFL</button>
       <button class="filter-tab" onclick="showLbSport('NRL',this)">NRL</button>
+      <button class="filter-tab" onclick="showLbSport('NBA',this)">🏀 NBA</button>
       <button class="filter-tab" onclick="showLbSport('Soccer',this)">Soccer</button>
       <button class="filter-tab" onclick="showLbSport('UFC',this)">UFC</button>
       <button class="filter-tab" onclick="showLbSport('Greyhound',this)">Greyhounds</button>
@@ -956,7 +959,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <div class="fg"><label>Date ★</label><input type="date" id="f-date"></div>
       <div class="fg"><label>Sport ★</label>
         <select id="f-sport">
-          <option>AFL</option><option>NRL</option><option>Soccer</option>
+          <option>AFL</option><option>NRL</option><option>NBA</option><option>Soccer</option>
           <option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option>
         </select>
       </div>
@@ -1011,7 +1014,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <div id="ai-input-form">
         <div class="form-grid" style="margin-bottom:16px">
           <div class="fg"><label>Sport</label>
-            <select id="ai-sport"><option>AFL</option><option>NRL</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option></select>
+            <select id="ai-sport"><option>AFL</option><option>NRL</option><option>NBA</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option></select>
           </div>
           <div class="fg"><label>Home / Fighter 1 ★</label><input type="text" id="ai-team1" placeholder="e.g. Collingwood"></div>
           <div class="fg"><label>Away / Fighter 2 ★</label><input type="text" id="ai-team2" placeholder="e.g. Richmond"></div>
@@ -1246,6 +1249,7 @@ bets = loadBets();
 const SPORTS = {
   afl:       { label:'AFL',          icon:'🏉', color:'#e8314a' },
   nrl:       { label:'NRL',          icon:'🏈', color:'#00c85a' },
+  nba:       { label:'NBA',          icon:'🏀', color:'#c9122a' },
   soccer:    { label:'Soccer',       icon:'⚽', color:'#3b82f6' },
   ufc:       { label:'UFC/MMA',      icon:'🥊', color:'#f59e0b' },
   boxing:    { label:'Boxing',       icon:'🥋', color:'#8b5cf6' },
@@ -1254,12 +1258,12 @@ const SPORTS = {
 };
 
 const SPORT_COLOR = {
-  'AFL':'#e8314a','NRL':'#00c85a','Soccer':'#3b82f6',
+  'AFL':'#e8314a','NRL':'#00c85a','NBA':'#c9122a','Soccer':'#3b82f6',
   'UFC':'#f59e0b','Boxing':'#8b5cf6','Greyhound':'#06b6d4','Horse Racing':'#f97316'
 };
 
 const SPORT_FILTER_MAP = {
-  'afl': 'AFL', 'nrl': 'NRL', 'soccer': 'Soccer',
+  'afl': 'AFL', 'nrl': 'NRL', 'nba': 'NBA', 'soccer': 'Soccer',
   'ufc': 'UFC', 'boxing': 'Boxing', 'greyhound': 'Greyhound', 'horse': 'Horse Racing'
 };
 
