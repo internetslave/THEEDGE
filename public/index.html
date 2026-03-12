@@ -1080,6 +1080,78 @@ function matchesSportFilter(sportLabel, filterKey) {
   return sportLabel === SPORT_FILTER_MAP[filterKey];
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// WEATHER — Open-Meteo (free, no key needed)
+// ═══════════════════════════════════════════════════════════════════
+const VENUE_COORDS = {
+  'Flemington':[-37.8006,144.9093],'Caulfield':[-37.8767,145.0432],
+  'Rosehill':[-33.8361,150.9916],'Randwick':[-33.8963,151.2096],
+  'Royal Randwick':[-33.8963,151.2096],'Eagle Farm':[-27.4291,153.0697],
+  'Doomben':[-27.4300,153.0685],'Moonee Valley':[-37.7587,144.9226],
+  'The Valley':[-37.7587,144.9226],'Sandown':[-38.0378,145.1668],
+  'Ascot':[-31.9455,115.9440],'Morphettville':[-34.9717,138.5627],
+  'Ballarat':[-37.5580,143.7985],'Bendigo':[-36.7571,144.2796],
+  'Geelong':[-38.1502,144.3548],'Hawkesbury':[-33.6220,150.8480],
+  'Warwick Farm':[-33.9100,150.9330],'Wyong':[-33.2828,151.4333],
+  'Kembla Grange':[-34.4722,150.8628],'Newcastle':[-32.9100,151.7650],
+  'The Meadows':[-37.7840,144.9030],'Wentworth Park':[-33.8754,151.1963],
+  'Dapto':[-34.5100,150.8028],'Ipswich':[-27.6200,152.7800],
+  'Albion Park':[-27.5800,153.0270],'Gold Coast':[-28.0167,153.4000],
+  'Sunshine Coast':[-26.6500,153.0667],'Townsville':[-19.2589,146.8169],
+  'Darwin':[-12.4634,130.8456],'Alice Springs':[-23.6980,133.8807],
+  'Launceston':[-41.4332,147.1441],'Hobart':[-42.8821,147.3272],
+  'Devonport':[-41.1767,146.3536],'Pakenham':[-38.0711,145.4858],
+  'Moe':[-38.1738,146.2634],'Echuca':[-36.1428,144.7583],
+  'Swan Hill':[-35.3384,143.5553],'Mildura':[-34.1842,142.1600],
+  'Seymour':[-37.0212,145.1433],'Stawell':[-37.0572,142.7766],
+  'Hamilton':[-37.7385,142.0222],'Balaklava':[-34.1485,138.4203],
+  'Mount Gambier':[-37.8284,140.7828],'Gawler':[-34.5986,138.7437],
+  'Murray Bridge':[-35.1200,139.2667],'Bulli':[-34.3333,150.9000],
+  'Canterbury':[-33.9167,151.1167],'Gosford':[-33.4278,151.3411],
+  'Goulburn':[-34.7548,149.7186],'Mudgee':[-32.5949,149.5875],
+  'Orange':[-33.2830,149.1000],'Tamworth':[-31.0927,150.9320],
+  'Grafton':[-29.6931,152.9341],'Coffs Harbour':[-30.2963,153.1135]
+};
+const weatherCache = {};
+function wmoEmoji(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '🌤️';
+  if (code === 3) return '☁️';
+  if (code <= 48) return '🌫️';
+  if (code <= 57) return '🌦️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌧️';
+  return '⛈️';
+}
+async function fetchVenueWeather(venue) {
+  if (weatherCache[venue]) return weatherCache[venue];
+  let coords = VENUE_COORDS[venue];
+  if (!coords) {
+    const key = Object.keys(VENUE_COORDS).find(k => venue.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(venue.toLowerCase()));
+    coords = key ? VENUE_COORDS[key] : null;
+  }
+  if (!coords) { weatherCache[venue] = null; return null; }
+  try {
+    const [lat, lng] = coords;
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto&forecast_days=1`);
+    const d = await r.json();
+    const w = { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
+    weatherCache[venue] = w;
+    return w;
+  } catch(e) { weatherCache[venue] = null; return null; }
+}
+async function attachWeatherInfo() {
+  const spans = document.querySelectorAll('[data-weather-venue]');
+  const venues = [...new Set([...spans].map(s=>s.dataset.weatherVenue))];
+  await Promise.all(venues.map(v => fetchVenueWeather(v)));
+  spans.forEach(span => {
+    const w = weatherCache[span.dataset.weatherVenue];
+    if (w) span.textContent = `${wmoEmoji(w.code)} ${w.temp}°C`;
+    else span.textContent = '';
+  });
+}
+
 // ── Live odds data — fetched from server ──
 let UPCOMING = [];
 let oddsLoading = false;
@@ -1287,11 +1359,10 @@ function setSport(sport) {
   currentSport = sport;
   document.querySelectorAll('.sport-chip').forEach(c=>{
     c.classList.toggle('active', c.dataset.sport===sport);
-    const s = SPORTS[sport] || SPORTS[c.dataset.sport];
-    if(c.dataset.sport===sport && sport!=='all') {
-      c.style.background = SPORTS[sport]?.color || '#f0b429';
+    if(c.dataset.sport===sport) {
+      c.style.background = sport==='all' ? '#f0b429' : (SPORTS[sport]?.color || '#f0b429');
       c.style.color = '#000';
-    } else if(c.dataset.sport!==sport) {
+    } else {
       c.style.background=''; c.style.color='';
     }
   });
@@ -1427,7 +1498,7 @@ function renderAIPicks() {
     const sc = SPORT_COLOR[m.sport]||'#aaa';
     return `<div class="ai-pick">
       <div class="ai-pick-sport" style="color:${sc}">${m.sport} · ${m.venue}</div>
-      <div class="ai-pick-match">${m.home} vs ${m.away}</div>
+      <div class="ai-pick-match">${(m.sport==='Greyhound'||m.sport==='Horse Racing') ? `R${m.raceNumber} · ${m.venue}` : `${m.home} vs ${m.away}`}</div>
       <div class="ai-pick-tip">🎯 ${m.pick}${m.valueBet?'<span class="value-chip">⚡ VALUE</span>':''}</div>
       <div class="confidence-bar">
         <div class="confidence-label">
@@ -1478,6 +1549,7 @@ function renderTips() {
       const sc = SPORT_COLOR[m.sport]||'#aaa';
       const h2hKey = `${m.home}_${m.away}`;
       const h2h = H2H[h2hKey];
+      const isRacingCard = m.sport==='Greyhound'||m.sport==='Horse Racing';
       return `<div class="card card-accent" style="border-top-color:${sc}">
         <div class="card-header">
           <div style="display:flex;align-items:center;gap:8px">
@@ -1487,8 +1559,12 @@ function renderTips() {
           <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${m.time}</div>
         </div>
         <div class="card-body">
-          <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px">${m.home} vs ${m.away}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">📍 ${m.venue}</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px">${isRacingCard ? `R${m.raceNumber} · ${m.venue}` : `${m.home} vs ${m.away}`}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:10px">
+            <span>📍 ${m.venue}</span>
+            ${isRacingCard ? `<span data-weather-venue="${m.venue}" style="font-weight:600;color:var(--text)">…</span>` : ''}
+            ${isRacingCard && m.going ? `<span style="background:rgba(255,255,255,.08);border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600">${m.going}</span>` : ''}
+          </div>
 
           <!-- AI Recommendation -->
           <div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:10px;padding:14px;margin-bottom:14px">
@@ -1551,6 +1627,7 @@ function renderTips() {
         </div>
       </div>`;
     }).join('');
+    attachWeatherInfo();
   } else {
     // Show informative empty state when no tips available
     document.getElementById('tips-grid').innerHTML = `<div class="empty" style="grid-column:1/-1;padding:60px 20px;text-align:center">
@@ -1588,10 +1665,10 @@ function filterUpcoming(sport, btn) {
   currentSport = sport === 'All' ? 'all' : (reverseMap[sport] || 'all');
   document.querySelectorAll('.sport-chip').forEach(c=>{
     c.classList.toggle('active', c.dataset.sport===currentSport);
-    if(c.dataset.sport===currentSport && currentSport!=='all') {
-      c.style.background = SPORTS[currentSport]?.color || '#f0b429';
+    if(c.dataset.sport===currentSport) {
+      c.style.background = currentSport==='all' ? '#f0b429' : (SPORTS[currentSport]?.color || '#f0b429');
       c.style.color = '#000';
-    } else if(c.dataset.sport!==currentSport) {
+    } else {
       c.style.background=''; c.style.color='';
     }
   });
@@ -1611,7 +1688,7 @@ function renderUpcomingTable(matches) {
           </div>
           <div>
             ${tag(m.sport,sc)}
-            <div class="upcoming-match" style="margin-top:4px">${isRacing?`R${m.raceNumber} ${m.venue}`:m.home+` <span>vs</span> `+m.away}</div>
+            <div class="upcoming-match" style="margin-top:4px">${isRacing?`R${m.raceNumber} · ${m.venue}`:m.home+` <span>vs</span> `+m.away}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${isRacing?`🏁 ${m.distance}m · ${m.comp} · ${m.runners?.length||'?'} runners`:`📍 ${m.venue} · ${m.comp}`}</div>
           </div>
           <div style="text-align:center">
@@ -2527,7 +2604,8 @@ function renderMOTD(containerId) {
             ${tag(m.sport, sc)}
             <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${m.time} · ${m.comp}</span>
           </div>
-          <div class="motd-teams">${m.home} <span style="color:var(--muted);font-size:16px">vs</span> ${m.away}</div>
+          <div class="motd-teams">${m.isRacing ? `R${m.raceNumber} · ${m.venue}` : `${m.home} <span style="color:var(--muted);font-size:16px">vs</span> ${m.away}`}</div>
+          ${m.isRacing ? `<div style="display:flex;align-items:center;gap:10px;margin-top:4px;font-size:12px;color:var(--muted)"><span>📍 ${m.venue}</span><span data-weather-venue="${m.venue}" style="font-weight:600;color:var(--text)">…</span>${m.going?`<span style="background:rgba(255,255,255,.08);border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600">${m.going}</span>`:''}</div>` : ''}
           ${ai?.summary ? `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:6px;max-width:520px">${ai.summary}</div>` : ''}
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -2545,6 +2623,7 @@ function renderMOTD(containerId) {
         <button onclick="event.stopPropagation();openQuickBet('${m.id}')" style="background:linear-gradient(90deg,#f0b429,#f97316);color:#000;border:none;border-radius:10px;padding:10px 20px;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer">+ BET THIS</button>
       </div>
     </div>`;
+  if (m.isRacing) attachWeatherInfo();
 }
 
 // ═══════════════════════════════════════════════════════════════════
