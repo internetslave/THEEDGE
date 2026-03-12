@@ -155,8 +155,9 @@ function rateLimit(req, res, next) {
 // ODDS
 // ═══════════════════════════════════════════════════════════════════
 const oddsCache = {};
-const ODDS_TTL  = 15 * 60 * 1000;
+const ODDS_TTL  = 6 * 60 * 60 * 1000; // 6-hour cache — preserves API credits
 let combinedOddsCache = { data: null, ts: 0 };
+let oddsApiCreditsRemaining = null;  // tracked from response headers
 
 const ALL_SPORTS = [
   { key: 'aussierules_afl',         label: 'afl'       },
@@ -171,6 +172,13 @@ async function fetchOdds(sport) {
   if (oddsCache[sport] && Date.now() - oddsCache[sport].ts < ODDS_TTL) return oddsCache[sport].data;
   const r = await fetch(`${ODDS_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=au&markets=h2h&oddsFormat=decimal`);
   if (!r.ok) throw new Error(`Odds API ${r.status}`);
+  // Track remaining credits from headers
+  const remaining = r.headers.get('x-requests-remaining');
+  const used      = r.headers.get('x-requests-used');
+  if (remaining !== null) {
+    oddsApiCreditsRemaining = parseInt(remaining, 10);
+    console.log(`[Odds API] credits used=${used} remaining=${remaining} sport=${sport}`);
+  }
   const data = await r.json();
   oddsCache[sport] = { data, ts: Date.now() };
   return data;
@@ -699,8 +707,21 @@ app.get('/api/odds', rateLimit, async (req, res) => {
     queueAIAnalysis(events.filter(e => !e.aiReady && !e.isRacing));
     const cacheAge = combinedOddsCache.ts ? Math.round((Date.now() - combinedOddsCache.ts) / 1000) : 0;
     const nextRefresh = Math.max(0, Math.round((ODDS_TTL - (Date.now() - combinedOddsCache.ts)) / 1000));
-    res.json({ success: true, events, cacheAge, nextRefresh, cacheTTL: ODDS_TTL / 1000 });
+    res.json({ success: true, events, cacheAge, nextRefresh, cacheTTL: ODDS_TTL / 1000, creditsRemaining: oddsApiCreditsRemaining });
   } catch (e) { console.error('Odds error:', e); res.status(500).json({ success: false, error: 'Failed to fetch odds' }); }
+});
+
+// ── ODDS CREDIT USAGE STATUS (no API call — reads cache only) ──
+app.get('/api/odds/usage', (req, res) => {
+  const cacheAge   = combinedOddsCache.ts ? Math.round((Date.now() - combinedOddsCache.ts) / 1000) : null;
+  const nextRefresh = cacheAge !== null ? Math.max(0, Math.round((ODDS_TTL / 1000) - cacheAge)) : 0;
+  res.json({
+    creditsRemaining: oddsApiCreditsRemaining,
+    cacheAge,
+    nextRefresh,
+    cacheTTLHours: ODDS_TTL / 3600000,
+    hasCachedData: !!combinedOddsCache.data
+  });
 });
 
 // ── AI ANALYSE ──
