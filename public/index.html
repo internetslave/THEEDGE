@@ -528,8 +528,12 @@ tbody tr:hover{background:var(--bg3)}
 /* ── FOOTER ── */
 footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justify-content:space-between;margin-top:40px;color:var(--muted);font-size:11px;font-family:var(--mono)}
 
-/* ── BOTTOM NAV (mobile only) ── */
+/* ── MOBILE-ONLY / DESKTOP-ONLY UTILITIES ── */
 #bottom-nav{display:none}
+#mobile-user-btn{display:none} /* hidden on desktop, shown in mobile CSS */
+.bets-mobile-cards{display:none} /* hidden on desktop, shown in mobile CSS */
+#user-menu-overlay,#more-menu-overlay{display:none}
+.bottom-sheet{display:none} /* bottom sheets off by default on desktop */
 
 /* ── TABLET ── */
 @media(max-width:1100px){
@@ -639,6 +643,68 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 
   /* Footer */
   footer{flex-direction:column;gap:4px;text-align:center;padding:12px;font-size:10px}
+
+  /* ── HEADER MOBILE ── */
+  /* Hide desktop-only header items */
+  .desktop-only{display:none!important}
+  /* Show mobile avatar trigger */
+  #mobile-user-btn{display:flex}
+  /* Shrink header-right gap */
+  .header-right{gap:6px}
+
+  /* ── USER MENU SHEET ── */
+  #user-menu-overlay,#more-menu-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:490;
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  }
+  #user-menu-overlay.open,#more-menu-overlay.open{display:block}
+  .bottom-sheet{
+    display:block;position:fixed;bottom:0;left:0;right:0;z-index:500;
+    background:var(--bg2);border-top:1px solid var(--border);
+    border-radius:20px 20px 0 0;padding:0 0 calc(16px + env(safe-area-inset-bottom));
+    transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .bottom-sheet.open{transform:translateY(0)}
+  .sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 4px}
+  .sheet-title{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);padding:4px 20px 12px;font-family:var(--mono)}
+  .sheet-user-info{display:flex;align-items:center;gap:12px;padding:4px 20px 16px;border-bottom:1px solid var(--border2);margin-bottom:8px}
+  .sheet-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .sheet-username{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)}
+  .sheet-btn{
+    display:flex;align-items:center;gap:12px;width:100%;padding:13px 20px;
+    background:none;border:none;color:var(--text);font-size:15px;font-family:var(--body);
+    cursor:pointer;text-align:left;transition:background .1s;-webkit-tap-highlight-color:transparent;
+  }
+  .sheet-btn:active{background:rgba(255,255,255,.06)}
+  .sheet-btn-icon{font-size:20px;width:28px;text-align:center}
+  .sheet-btn-label{font-weight:500}
+  .sheet-btn-label small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+  .sheet-divider{height:1px;background:var(--border2);margin:6px 20px}
+  .sheet-btn.danger{color:#ef4444}
+
+  /* ── BET CARDS (replace table on mobile) ── */
+  .bet-table-wrap{display:none}
+  .bets-mobile-cards{display:block}
+  .bet-card{
+    background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+    padding:14px 16px;margin-bottom:10px;
+  }
+  .bet-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .bet-card-event{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.3}
+  .bet-card-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .bet-card-type{font-size:11px;color:var(--muted);font-family:var(--mono);background:var(--bg3);border-radius:4px;padding:2px 8px}
+  .bet-card-odds{font-size:12px;font-family:var(--mono);font-weight:700;color:#f59e0b}
+  .bet-card-pnl{font-size:13px;font-family:var(--mono);font-weight:700;margin-left:auto}
+  .bet-card-stake{font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+  /* ── FIX OVERFLOW ── */
+  #page-mybets .section-title{font-size:13px}
+  .motd-card{overflow:hidden}
+  .motd-teams{font-size:20px}
+  .value-strip .qs-item{min-width:160px}
+  /* MOTD why strip wraps cleanly */
+  .motd-why-strip{gap:4px}
+  .motd-why-pill{font-size:9px;padding:2px 8px}
 }
 </style>
 </head>
@@ -718,17 +784,21 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
   <div class="header-right">
     <div style="display:flex;align-items:center;gap:6px">
       <div class="live-badge" style="cursor:pointer" onclick="manualRefreshOdds()" title="Click to refresh odds"><div class="live-dot"></div><span id="live-badge-text">LIVE ODDS</span></div>
-      <button id="btn-manual-refresh" onclick="manualRefreshOdds()" title="Fetch latest odds" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;cursor:pointer;font-family:var(--mono);transition:all .15s;line-height:1" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↻</button>
-      <span id="credits-badge" style="display:none;font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.5px;opacity:.75" title="Odds API credits remaining"></span>
+      <button id="btn-manual-refresh" class="desktop-only" onclick="manualRefreshOdds()" title="Fetch latest odds" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;cursor:pointer;font-family:var(--mono);transition:all .15s;line-height:1" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↻</button>
+      <span id="credits-badge" class="desktop-only" style="display:none;font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.5px;opacity:.75" title="Odds API credits remaining"></span>
     </div>
-    <button class="ai-btn" onclick="openAIAnalysis()">🤖 AI ANALYSE</button>
-    <button onclick="window.location.href='/tipping'" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">🎯 TIPPING</button>
-    <button onclick="window.location.href='/fantasy'" style="background:linear-gradient(135deg,#2d6a4f,#40916c);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">🏆 FANTASY</button>
-    <div id="user-badge" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px">
+    <button class="ai-btn desktop-only" onclick="openAIAnalysis()">🤖 AI ANALYSE</button>
+    <button class="desktop-only" onclick="window.location.href='/tipping'" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">🎯 TIPPING</button>
+    <button class="desktop-only" onclick="window.location.href='/fantasy'" style="background:linear-gradient(135deg,#2d6a4f,#40916c);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">🏆 FANTASY</button>
+    <div id="user-badge" class="desktop-only" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px">
       <div id="user-avatar" style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px"></div>
       <div id="user-name" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)"></div>
     </div>
-    <button onclick="doLogout()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 12px;cursor:pointer;font-size:11px;font-family:var(--mono);transition:all .15s" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">logout</button>
+    <button class="desktop-only" onclick="doLogout()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 12px;cursor:pointer;font-size:11px;font-family:var(--mono);transition:all .15s" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">logout</button>
+    <!-- Mobile-only: avatar button opens user sheet -->
+    <button id="mobile-user-btn" onclick="openUserSheet()" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:6px 10px;cursor:pointer;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;min-width:44px;min-height:44px;justify-content:center">
+      <span id="mobile-user-avatar" style="font-size:20px">👤</span>
+    </button>
   </div>
 </div>
 
@@ -839,6 +909,8 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       <tbody id="bets-tbody"></tbody>
     </table>
   </div>
+  <!-- Mobile card view (shown instead of table on small screens) -->
+  <div class="bets-mobile-cards" id="bets-cards"></div>
 </div>
 
 <!-- ══════════ LEADERBOARD PAGE ══════════ -->
@@ -1037,28 +1109,94 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 
 <div id="toast"></div>
 
-<!-- ── MOBILE BOTTOM NAV ── -->
+<!-- ── MOBILE BOTTOM NAV (5 items) ── -->
 <div id="bottom-nav">
-  <button class="bnav-btn active" onclick="showPage('home');setActiveBottomNav(this)">
+  <button class="bnav-btn active" data-page="home" onclick="showPage('home');setActiveBottomNav(this)">
     <span class="bnav-icon">🏠</span>Home
   </button>
-  <button class="bnav-btn" onclick="showPage('tips');setActiveBottomNav(this)">
+  <button class="bnav-btn" data-page="tips" onclick="showPage('tips');setActiveBottomNav(this)">
     <span class="bnav-icon">⚡</span>Tips
   </button>
-  <button class="bnav-btn" onclick="showPage('upcoming');setActiveBottomNav(this)">
-    <span class="bnav-icon">📅</span>Upcoming
-  </button>
-  <button class="bnav-btn" onclick="showPage('mybets');setActiveBottomNav(this)">
+  <button class="bnav-btn" data-page="mybets" onclick="showPage('mybets');setActiveBottomNav(this)">
     <span class="bnav-icon">📋</span>My Bets
   </button>
-  <button class="bnav-btn" onclick="showPage('leaderboard');setActiveBottomNav(this)">
+  <button class="bnav-btn" data-page="leaderboard" onclick="showPage('leaderboard');setActiveBottomNav(this)">
     <span class="bnav-icon">🏆</span>Board
   </button>
-  <button class="bnav-btn" onclick="window.location.href='/tipping'" style="color:#3b82f6">
-    <span class="bnav-icon">🎯</span>Tipping
+  <button class="bnav-btn" onclick="openMoreSheet()">
+    <span class="bnav-icon">☰</span>More
   </button>
-  <button class="bnav-btn" onclick="window.location.href='/fantasy'" style="color:#2d6a4f">
-    <span class="bnav-icon">🏅</span>Fantasy
+</div>
+
+<!-- ── USER MENU SHEET (mobile) ── -->
+<div id="user-menu-overlay" onclick="closeUserSheet()"></div>
+<div id="user-menu-sheet" class="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-user-info">
+    <div class="sheet-avatar" id="sheet-avatar-el">👤</div>
+    <div>
+      <div class="sheet-username" id="sheet-username-el">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">THE EDGE MEMBER</div>
+    </div>
+  </div>
+  <button class="sheet-btn" onclick="closeUserSheet();openAIAnalysis()">
+    <span class="sheet-btn-icon">🤖</span>
+    <span class="sheet-btn-label">AI Analyse<small>Get AI picks for any match</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeUserSheet();showPage('analysis');setActiveBottomNav(null)">
+    <span class="sheet-btn-icon">📊</span>
+    <span class="sheet-btn-label">Analysis<small>Head-to-head stats & trends</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeUserSheet();manualRefreshOdds()">
+    <span class="sheet-btn-icon">↻</span>
+    <span class="sheet-btn-label">Refresh Odds<small id="sheet-credits-label">Fetch latest data</small></span>
+  </button>
+  <div class="sheet-divider"></div>
+  <button class="sheet-btn" onclick="closeUserSheet();window.location.href='/tipping'">
+    <span class="sheet-btn-icon">🎯</span>
+    <span class="sheet-btn-label">Tipping Competition<small>Pick winners each round</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeUserSheet();window.location.href='/fantasy'">
+    <span class="sheet-btn-icon">🏅</span>
+    <span class="sheet-btn-label">Fantasy<small>Build your squad</small></span>
+  </button>
+  <div class="sheet-divider"></div>
+  <button class="sheet-btn danger" onclick="closeUserSheet();doLogout()">
+    <span class="sheet-btn-icon">🚪</span>
+    <span class="sheet-btn-label">Sign Out</span>
+  </button>
+</div>
+
+<!-- ── MORE MENU SHEET (mobile) ── -->
+<div id="more-menu-overlay" onclick="closeMoreSheet()"></div>
+<div id="more-menu-sheet" class="bottom-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">MORE</div>
+  <button class="sheet-btn" onclick="closeMoreSheet();showPage('upcoming');setActiveBottomNav(null)">
+    <span class="sheet-btn-icon">📅</span>
+    <span class="sheet-btn-label">Upcoming<small>All scheduled matches</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeMoreSheet();showPage('analysis');setActiveBottomNav(null)">
+    <span class="sheet-btn-icon">📊</span>
+    <span class="sheet-btn-label">Analysis<small>Head-to-head stats & trends</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeMoreSheet();openAIAnalysis()">
+    <span class="sheet-btn-icon">🤖</span>
+    <span class="sheet-btn-label">AI Analyse<small>Get AI picks for any match</small></span>
+  </button>
+  <div class="sheet-divider"></div>
+  <button class="sheet-btn" onclick="closeMoreSheet();window.location.href='/tipping'">
+    <span class="sheet-btn-icon">🎯</span>
+    <span class="sheet-btn-label">Tipping Competition<small>Pick winners each round</small></span>
+  </button>
+  <button class="sheet-btn" onclick="closeMoreSheet();window.location.href='/fantasy'">
+    <span class="sheet-btn-icon">🏅</span>
+    <span class="sheet-btn-label">Fantasy<small>Build your squad</small></span>
+  </button>
+  <div class="sheet-divider"></div>
+  <button class="sheet-btn danger" onclick="closeMoreSheet();doLogout()">
+    <span class="sheet-btn-icon">🚪</span>
+    <span class="sheet-btn-label">Sign Out</span>
   </button>
 </div>
 
@@ -1359,13 +1497,17 @@ function showOddsLoading(show) {
 
 function updateCreditsBadge() {
   const el = document.getElementById('credits-badge');
-  if (!el || oddsCreditsRemaining === null) return;
+  if (oddsCreditsRemaining === null) return;
   const pct  = Math.round((oddsCreditsRemaining / 500) * 100);
   const col  = oddsCreditsRemaining > 100 ? '#10b981' : oddsCreditsRemaining > 30 ? '#f59e0b' : '#ef4444';
-  el.style.display = 'inline-flex';
-  el.style.color   = col;
-  el.title = `${oddsCreditsRemaining} API credits remaining (${pct}% of 500)`;
-  el.textContent   = `⚡ ${oddsCreditsRemaining} credits`;
+  if (el) {
+    el.style.display = 'inline-flex';
+    el.style.color   = col;
+    el.title = `${oddsCreditsRemaining} API credits remaining (${pct}% of 500)`;
+    el.textContent   = `⚡ ${oddsCreditsRemaining} credits`;
+  }
+  const sheetLabel = document.getElementById('sheet-credits-label');
+  if (sheetLabel) sheetLabel.textContent = `⚡ ${oddsCreditsRemaining} credits remaining`;
 }
 
 // Manual refresh — user-triggered, bypasses idle check
@@ -1442,6 +1584,28 @@ function confColor(c) {
 function setActiveBottomNav(btn) {
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
+}
+
+// ── Mobile sheet helpers ──
+function openUserSheet() {
+  document.getElementById('user-menu-sheet').classList.add('open');
+  document.getElementById('user-menu-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeUserSheet() {
+  document.getElementById('user-menu-sheet').classList.remove('open');
+  document.getElementById('user-menu-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function openMoreSheet() {
+  document.getElementById('more-menu-sheet').classList.add('open');
+  document.getElementById('more-menu-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMoreSheet() {
+  document.getElementById('more-menu-sheet').classList.remove('open');
+  document.getElementById('more-menu-overlay').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 function showPage(name) {
@@ -1925,6 +2089,8 @@ function filterBets(sport, btn) {
   let out = sport==='ALL' ? [...bets] : bets.filter(b=>b.sport===sport);
   out = out.reverse();
   document.getElementById('bets-count').textContent = out.length+' bets';
+
+  // ── Desktop: table view ──
   document.getElementById('bets-tbody').innerHTML = out.length
     ? out.map(b=>{
         const pnl=calcPnl(b);
@@ -1942,7 +2108,40 @@ function filterBets(sport, btn) {
           <td><button class="action-btn" onclick="openEdit(${b.id})">edit</button><button class="action-btn del" onclick="confirmDelete(${b.id})">del</button></td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="11" class="empty">No bets logged. <a href="#" onclick="showPage('mybets')" style="color:var(--accent)">Log your first bet</a></td></tr>`;
+    : `<tr><td colspan="11" class="empty">No bets logged yet.</td></tr>`;
+
+  // ── Mobile: card view ──
+  const cardsEl = document.getElementById('bets-cards');
+  if (!cardsEl) return;
+  cardsEl.innerHTML = out.length
+    ? out.map(b => {
+        const pnl = calcPnl(b);
+        const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+        return `<div class="bet-card">
+          <div class="bet-card-top">
+            ${sportTag(b.sport)}
+            <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.date}</span>
+          </div>
+          <div class="bet-card-event">${b.event}</div>
+          <div class="bet-card-row">
+            <span class="bet-card-type">${b.bet}</span>
+            <span class="bet-card-stake">$${b.stake}</span>
+            <span class="bet-card-odds">${b.odds}x</span>
+            ${resultTag(b.result)}
+            <span class="bet-card-pnl" style="color:${pnlColor}">${fmtPnl(pnl)}</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="action-btn" onclick="openEdit(${b.id})" style="flex:1;padding:8px">✏️ Edit</button>
+            <button class="action-btn del" onclick="confirmDelete(${b.id})" style="padding:8px 12px">🗑️</button>
+          </div>
+        </div>`;
+      }).join('')
+    : `<div class="empty" style="padding:40px;text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:16px;margin-bottom:8px">NO BETS YET</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:16px">Start tracking your bets to see your stats here.</div>
+        <button class="btn-primary" onclick="openBetForm()">+ Log Your First Bet</button>
+      </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2727,12 +2926,24 @@ async function loginAs(profile) {
     const d = await r.json();
     bets = d.bets || [];
   } catch(e) { bets = []; }
-  // Update header
+  // Update header (desktop)
   const av = document.getElementById('user-avatar');
   av.textContent = profile.avatar;
   av.style.background = profile.color+'22';
   av.style.border = `1px solid ${profile.color}44`;
   document.getElementById('user-name').textContent = profile.username.toUpperCase();
+  // Update mobile header & sheet
+  const mobileAvBtn = document.getElementById('mobile-user-btn');
+  if (mobileAvBtn) {
+    mobileAvBtn.style.borderColor = profile.color + '44';
+    mobileAvBtn.style.background = profile.color + '11';
+  }
+  const mobileAv = document.getElementById('mobile-user-avatar');
+  if (mobileAv) mobileAv.textContent = profile.avatar;
+  const sheetAv = document.getElementById('sheet-avatar-el');
+  if (sheetAv) { sheetAv.textContent = profile.avatar; sheetAv.style.background = profile.color+'22'; sheetAv.style.borderColor = profile.color+'55'; }
+  const sheetUn = document.getElementById('sheet-username-el');
+  if (sheetUn) sheetUn.textContent = profile.username.toUpperCase();
   // Show app
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('header').style.display = 'flex';
