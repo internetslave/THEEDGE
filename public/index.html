@@ -293,6 +293,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:1
 
 /* ── LEADERBOARD ── */
 /* ── MATCH OF THE DAY ── */
+/* ── QUICK START / BEST BET STRIP ── */
+.qs-strip{
+  background:linear-gradient(135deg,rgba(16,185,129,.12) 0%,rgba(59,130,246,.08) 100%);
+  border:1px solid rgba(16,185,129,.35);border-radius:14px;
+  padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;
+  gap:16px;flex-wrap:wrap;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.qs-strip::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#10b981,#3b82f6)}
+.qs-strip:hover{border-color:rgba(16,185,129,.6);transform:translateY(-1px);box-shadow:0 6px 24px rgba(16,185,129,.12)}
+.qs-badge{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.35);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:2px;color:#10b981;white-space:nowrap}
+.qs-pick{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#10b981;line-height:1}
+.qs-label{font-size:11px;color:var(--muted);margin-bottom:2px}
+.qs-event{font-size:13px;color:var(--text);font-weight:600}
+.qs-intro{font-size:12px;color:var(--muted);line-height:1.5;max-width:340px}
+.qs-odds{font-family:var(--mono);font-size:20px;font-weight:700;color:#f0b429;white-space:nowrap}
+.qs-conf{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+@media(max-width:600px){.qs-intro{display:none}.qs-strip{gap:10px}}
 .motd-card{
   background:linear-gradient(135deg,rgba(240,180,41,.12) 0%,rgba(249,115,22,.08) 50%,rgba(139,92,246,.06) 100%);
   border:1px solid rgba(240,180,41,.3);border-radius:16px;padding:20px 24px;
@@ -706,6 +723,9 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 <div id="page-home" class="page active">
   <!-- Stats Row -->
   <div class="grid-4" id="home-stats"></div>
+
+  <!-- Best Bet / Quick Start -->
+  <div id="home-quickstart"></div>
 
   <!-- Match of the Day -->
   <div id="motd-home"></div>
@@ -1370,6 +1390,53 @@ function setSport(sport) {
 // ═══════════════════════════════════════════════════════════════════
 // HOME PAGE
 // ═══════════════════════════════════════════════════════════════════
+function renderQuickStart() {
+  const el = document.getElementById('home-quickstart');
+  if (!el) return;
+  if (!oddsLoaded) { el.innerHTML = ''; return; }
+
+  // Best pick = highest-confidence value bet, or just top confidence if none
+  const pool = UPCOMING.filter(m => matchesSportFilter(m.sport, currentSport));
+  const valuePicks = pool.filter(m => m.valueBet).sort((a,b) => b.confidence - a.confidence);
+  const topPicks   = pool.sort((a,b) => b.confidence - a.confidence);
+  const m = valuePicks[0] || topPicks[0];
+  if (!m) { el.innerHTML = ''; return; }
+
+  const isRacing = m.sport==='Greyhound'||m.sport==='Horse Racing';
+  const sc = SPORT_COLOR[m.sport] || '#aaa';
+  const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
+  const eventLabel = isRacing ? `R${m.raceNumber} · ${m.venue}` : `${m.home} vs ${m.away}`;
+  const isValue = !!m.valueBet;
+
+  const introLines = isValue
+    ? `Our AI spotted a <strong style="color:#10b981">value edge</strong> — the odds on offer are better than the true probability suggests. A favourite pick for sharps.`
+    : `Our AI's <strong style="color:#10b981">top confidence pick</strong> right now. Click to see the full analysis before placing a bet.`;
+
+  el.innerHTML = `
+    <div class="qs-strip" onclick="openMatchModal('${m.id}')">
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <div class="qs-badge">${isValue ? '⚡ BEST VALUE RIGHT NOW' : '🎯 TOP PICK RIGHT NOW'}</div>
+        <div class="qs-label">AI PICK</div>
+        <div class="qs-pick">${m.pick}</div>
+        ${oddsVal ? `<div class="qs-odds">@ ${oddsVal}x</div>` : ''}
+        <div class="qs-conf">${m.confidence}% confidence</div>
+      </div>
+      <div style="width:1px;background:rgba(255,255,255,.08);align-self:stretch;flex-shrink:0"></div>
+      <div style="flex:1;min-width:140px">
+        <div class="qs-label">EVENT</div>
+        <div class="qs-event" style="margin-bottom:6px">${eventLabel}</div>
+        <div class="qs-intro">${introLines}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;margin-left:auto">
+        ${tag(m.sport, sc)}
+        <button onclick="event.stopPropagation();openBetFormWithMatch('${m.id}')"
+          style="background:linear-gradient(90deg,#10b981,#3b82f6);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;white-space:nowrap">
+          + LOG THIS BET
+        </button>
+      </div>
+    </div>`;
+}
+
 function renderHome() {
   const s = getStats(bets);
   const pos = s.profit >= 0;
@@ -1416,6 +1483,9 @@ function renderHome() {
         </tr>`;}).join('')}</tbody>
       </table>`
     : `<div class="empty">No bets logged yet — <a href="#" onclick="showPage('mybets')" style="color:var(--accent)">log your first bet</a></div>`;
+
+  // Best Bet / Quick Start strip
+  renderQuickStart();
 
   // Match of the Day
   renderMOTD('motd-home');
