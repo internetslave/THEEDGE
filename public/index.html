@@ -889,61 +889,6 @@ footer{border-top:1px solid var(--border);padding:18px 28px;display:flex;justify
   #slip-fab{bottom:72px;right:16px;width:52px;height:52px;border-radius:14px}
 }
 
-/* ═══════════════════════════════════════════════════════
-   PORTED FROM PREVIOUS VERSION — required by JS-rendered HTML
-   ═══════════════════════════════════════════════════════ */
-
-/* Confidence bars */
-.confidence-bar{margin-bottom:8px}
-.confidence-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px}
-.confidence-label span:first-child{color:var(--muted)}
-.confidence-label span:last-child{font-weight:700;font-family:var(--mono)}
-.conf-track{background:var(--bg3);border-radius:4px;height:6px}
-.conf-fill{height:100%;border-radius:4px;transition:width .8s ease}
-
-/* AI reasoning in picks panel */
-.ai-reasoning{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04)}
-
-/* Value bet badge */
-.value-bet-badge{
-  display:inline-flex;align-items:center;gap:6px;
-  background:linear-gradient(135deg,rgba(240,180,41,.18),rgba(240,180,41,.06));
-  border:1px solid rgba(240,180,41,.5);border-radius:6px;padding:5px 12px;
-  font-size:11px;font-weight:800;color:#f0b429;letter-spacing:.8px;margin-bottom:10px;
-  animation:value-glow 2.5s ease-in-out infinite;
-}
-
-/* Extra markets */
-.em-market{border:1px solid var(--glass-border);border-radius:10px;margin-bottom:8px;overflow:hidden}
-.em-title{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text);background:rgba(255,255,255,.02);user-select:none;-webkit-tap-highlight-color:transparent;letter-spacing:.3px;transition:background .15s}
-.em-title:hover,.em-title:active{background:rgba(255,255,255,.04)}
-.em-body{padding:10px;background:var(--bg)}
-.em-2col{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.em-outcome{background:rgba(255,255,255,.02);border:1px solid var(--glass-border);border-radius:8px;padding:9px 11px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.em-outcome:hover,.em-outcome:active{border-color:var(--accent2);background:rgba(249,115,22,.06)}
-.em-ai-pick{border-color:rgba(139,92,246,.5)!important;background:rgba(139,92,246,.07)!important}
-.em-ai-pick:hover,.em-ai-pick:active{border-color:#8b5cf6!important;background:rgba(139,92,246,.15)!important}
-.em-outcome-label{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3}
-.em-outcome-odds{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
-.em-outcome.in-slip{border-color:rgba(16,185,129,.5)!important;background:rgba(16,185,129,.07)!important}
-
-/* Bet slip legs */
-.slip-leg{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
-.slip-leg:last-of-type{border-bottom:none}
-.slip-leg-info{flex:1;min-width:0}
-.slip-leg-mkt{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px}
-.slip-leg-sel{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip-leg-match{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip-leg-odds{font-family:var(--mono);font-size:14px;font-weight:700;color:#f0b429;flex-shrink:0;padding-top:2px}
-.slip-rm{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-.slip-rm:active{color:#ef4444}
-.slip-pill{background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);color:var(--accent2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:700;flex-shrink:0;transition:all .15s;padding:0;line-height:1;-webkit-tap-highlight-color:transparent}
-.slip-pill:active{transform:scale(.88)}
-.slip-pill.added{background:rgba(16,185,129,.14)!important;border-color:rgba(16,185,129,.5)!important;color:#10b981!important}
-.slip-add-btn{display:block;margin-top:8px;width:100%;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);color:var(--accent2);border-radius:6px;padding:5px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .15s;font-family:'Oswald',sans-serif;-webkit-tap-highlight-color:transparent}
-.slip-add-btn:active{background:rgba(240,180,41,.2)}
-.slip-add-btn.added{background:rgba(16,185,129,.12)!important;border-color:rgba(16,185,129,.4)!important;color:#10b981!important}
-
 </style>
 </head>
 <body>
@@ -1551,6 +1496,39 @@ footer{border-top:1px solid var(--border);padding:18px 28px;display:flex;justify
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
+// THE EDGE — JS ARCHITECTURE MAP
+// ═══════════════════════════════════════════════════════════════════
+// When ready to split into separate files, cut along these boundaries:
+//
+// ┌──────────────────────────────────────────────────────┐
+// │ MODULE 1: config.js                                   │
+// │   → BETS_KEY, SPORTS, SPORT_COLOR, VENUE_COORDS      │
+// │   → Sport config, color maps, static data             │
+// ├──────────────────────────────────────────────────────┤
+// │ MODULE 2: data.js                                     │
+// │   → loadBets, saveBets, calcPnl, getStats, calcStreak │
+// │   → enrichEvent, hashCode, fetchLiveOdds              │
+// │   → Weather API, Speed Map builder                    │
+// ├──────────────────────────────────────────────────────┤
+// │ MODULE 3: render.js                                   │
+// │   → renderHome, renderTips, renderUpcoming            │
+// │   → renderMyBets, renderLeaderboard, renderAnalysis   │
+// │   → matchCard, renderAIPicks, renderMOTD              │
+// │   → DocumentFragment builders for tables/cards        │
+// ├──────────────────────────────────────────────────────┤
+// │ MODULE 4: ui.js                                       │
+// │   → showPage, setSport, showToast, tag, sportTag      │
+// │   → openBetForm, closeBetForm, openMatchModal         │
+// │   → openAIAnalysis, bet slip, bookie sheet            │
+// │   → Bottom nav, mobile sheets                         │
+// ├──────────────────────────────────────────────────────┤
+// │ MODULE 5: auth.js                                     │
+// │   → doSignIn, doSignUp, doLogout, loginAs             │
+// │   → Token management, PIN reset flow                  │
+// └──────────────────────────────────────────────────────┘
+//
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════════════════════════════
 const BETS_KEY = 'edgeiq-bets-v1';
@@ -1743,24 +1721,39 @@ let oddsLoaded = false;
 let oddsLastUpdated = null;
 
 function enrichEvent(ev) {
-  const d = new Date(ev.commenceTime);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const isTomorrow = d.toDateString() === new Date(now.getTime()+86400000).toDateString();
-  const dayLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
-  const timeStr = d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit',hour12:true});
-  const time = `${dayLabel} ${timeStr}`;
+  // Guard: skip entirely if event is null/undefined
+  if (!ev) return null;
+
+  // Safe date parsing — fallback to 'TBC' if commenceTime is missing or invalid
+  let time = 'TBC';
+  try {
+    const d = new Date(ev.commenceTime);
+    if (!isNaN(d.getTime())) {
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const isTomorrow = d.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+      const dayLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+      const timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+      time = `${dayLabel} ${timeStr}`;
+    }
+  } catch (e) { /* keep time as 'TBC' */ }
+
+  // Safely coerce odds to numbers (API might return strings or nulls)
+  const homeOdds = parseFloat(ev.homeOdds) || 0;
+  const awayOdds = parseFloat(ev.awayOdds) || 0;
+  const drawOdds = parseFloat(ev.drawOdds) || 0;
 
   if (ev.isRacing) {
     const distLabel = ev.distanceLabel || (ev.distance ? `${ev.distance}m` : '');
     return {
       ...ev,
+      homeOdds, awayOdds, drawOdds,
       time,
       venue: ev.venue || 'TBC',
-      comp: ev.comp || ev.sport,
-      pick: ev.home,
-      confidence: Math.round(50 + (1 / ev.homeOdds) * 40),
-      valueBet: ev.homeOdds >= 3.0 && ev.homeOdds <= 8.0,
+      comp: ev.comp || ev.sport || 'Racing',
+      pick: ev.home || '—',
+      confidence: homeOdds > 0 ? Math.round(50 + (1 / homeOdds) * 40) : 50,
+      valueBet: homeOdds >= 3.0 && homeOdds <= 8.0,
       keyFactor: distLabel,
       reasoning: '',
       homeRecord: ev.runners ? `${ev.runners.length} runners · ${distLabel}` : '',
@@ -1768,34 +1761,37 @@ function enrichEvent(ev) {
     };
   }
 
-  const compMap = {AFL:'AFL Premiership',NRL:'NRL Premiership',Soccer:'A-League / EPL',UFC:'UFC Main Card',Boxing:'Boxing'};
+  const compMap = { AFL: 'AFL Premiership', NRL: 'NRL Premiership', Soccer: 'A-League / EPL', UFC: 'UFC Main Card', Boxing: 'Boxing' };
   const venueMap = {
-    AFL:['MCG','Marvel Stadium','SCG','Adelaide Oval','Optus Stadium','Gabba','GMHBA Stadium','ENGIE Stadium'],
-    NRL:['Accor Stadium','Suncorp Stadium','BlueBet Stadium','Commbank Stadium','4 Pines Park','WIN Stadium'],
-    Soccer:['AAMI Park','Allianz Stadium','Hindmarsh Stadium','Suncorp Stadium'],
-    UFC:['UFC APEX','T-Mobile Arena','Madison Square Garden'],
-    Boxing:['MGM Grand','Wembley Stadium','Madison Square Garden']
+    AFL: ['MCG', 'Marvel Stadium', 'SCG', 'Adelaide Oval', 'Optus Stadium', 'Gabba', 'GMHBA Stadium', 'ENGIE Stadium'],
+    NRL: ['Accor Stadium', 'Suncorp Stadium', 'BlueBet Stadium', 'Commbank Stadium', '4 Pines Park', 'WIN Stadium'],
+    Soccer: ['AAMI Park', 'Allianz Stadium', 'Hindmarsh Stadium', 'Suncorp Stadium'],
+    UFC: ['UFC APEX', 'T-Mobile Arena', 'Madison Square Garden'],
+    Boxing: ['MGM Grand', 'Wembley Stadium', 'Madison Square Garden']
   };
   const venues = venueMap[ev.sport] || ['TBC'];
-  const venue = venues[Math.abs(hashCode(ev.id)) % venues.length];
-  const comp = compMap[ev.sport] || ev.sport;
+  const venue = venues[Math.abs(hashCode(String(ev.id || ''))) % venues.length];
+  const comp = compMap[ev.sport] || ev.sport || 'Unknown';
 
-  const pick = ev.recommendation || (ev.homeOdds <= ev.awayOdds ? ev.home : ev.away);
-  const confidence = ev.confidence || Math.round(50 + (Math.abs(ev.homeOdds - ev.awayOdds) / Math.max(ev.homeOdds, ev.awayOdds)) * 40);
-  const valueBet = ev.valueBet != null ? ev.valueBet : (ev.homeOdds >= 1.8 && ev.homeOdds <= 3.5) || (ev.awayOdds >= 1.8 && ev.awayOdds <= 3.5);
-  const keyFactor = ev.keyFactor || '';
-  const reasoning = ev.reasoning || '';
+  // Safe confidence calculation — avoid division by zero
+  const maxOdds = Math.max(homeOdds, awayOdds, 0.01);
+  const pick = ev.recommendation || (homeOdds > 0 && awayOdds > 0 && homeOdds <= awayOdds ? ev.home : ev.away) || '—';
+  const confidence = ev.confidence || (homeOdds > 0 && awayOdds > 0
+    ? Math.round(50 + (Math.abs(homeOdds - awayOdds) / maxOdds) * 40)
+    : 50);
+  const valueBet = ev.valueBet != null ? ev.valueBet : (homeOdds >= 1.8 && homeOdds <= 3.5) || (awayOdds >= 1.8 && awayOdds <= 3.5);
 
   return {
     ...ev,
+    homeOdds, awayOdds, drawOdds,
     time,
     venue,
     comp,
     pick,
-    confidence,
+    confidence: Math.min(99, Math.max(0, confidence)),
     valueBet,
-    keyFactor,
-    reasoning,
+    keyFactor: ev.keyFactor || '',
+    reasoning: ev.reasoning || '',
     homeRecord: '',
     awayRecord: ''
   };
@@ -1834,7 +1830,7 @@ async function fetchLiveOdds(forceRefresh = false) {
     const res  = await fetch('/api/odds');
     const data = await res.json();
     if (data.success && data.events?.length) {
-      UPCOMING = data.events.map(enrichEvent);
+      UPCOMING = data.events.map(enrichEvent).filter(Boolean);
       oddsLoaded = true;
       // Use server cacheAge to set the true time odds were last fetched (not just when client received them)
       oddsLastUpdated = data.cacheAge ? Date.now() - (data.cacheAge * 1000) : Date.now();
@@ -2412,34 +2408,66 @@ function filterUpcoming(sport, btn) {
 }
 
 function renderUpcomingTable(matches) {
-  document.getElementById('upcoming-table').innerHTML = matches.length
-    ? matches.map(m=>{
-        const sc=SPORT_COLOR[m.sport]||'#aaa';
-        const isRacing=m.sport==='Greyhound'||m.sport==='Horse Racing';
-        return `<div class="upcoming-row" onclick="openMatchModal('${m.id}')">
-          <div class="upcoming-time">
-            <div style="font-size:12px;font-weight:700;color:var(--text)">${m.time.split(' ').slice(0,-1).join(' ')}</div>
-            <div>${m.time.split(' ').slice(-2).join(' ')}</div>
-          </div>
-          <div>
-            ${tag(m.sport,sc)}
-            <div class="upcoming-match" style="margin-top:4px">${isRacing?`R${m.raceNumber} · ${m.venue}`:m.home+` <span>vs</span> `+m.away}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${isRacing?`🏁 ${m.distance}m · ${m.comp} · ${m.runners?.length||'?'} runners`:`📍 ${m.venue} · ${m.comp}`}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:4px">AI PICK</div>
-            <div style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#10b981">${m.pick}</div>
-            <div style="font-size:11px;color:${confColor(m.confidence)};font-family:var(--mono)">${m.confidence}%</div>
-          </div>
-          <div class="upcoming-odds-row">
-            ${m.homeOdds?`<div class="mini-odd${m.valueBet&&m.pick===m.home?' best':''}">${m.homeOdds}</div>`:''}
-            ${m.drawOdds?`<div class="mini-odd">D ${m.drawOdds}</div>`:''}
-            ${m.awayOdds?`<div class="mini-odd${m.valueBet&&m.pick===m.away?' best':''}">${m.awayOdds}</div>`:''}
-            <button class="mini-odd" style="background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.25);color:#10b981" onclick="event.stopPropagation();openBetFormWithMatch('${m.id}')">+ BET</button>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="empty">No upcoming matches</div>';
+  const container = document.getElementById('upcoming-table');
+  if (!container) return;
+
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty">No upcoming matches</div>';
+    return;
+  }
+
+  // DocumentFragment: builds entire DOM off-screen, single paint
+  const frag = document.createDocumentFragment();
+
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const sc = SPORT_COLOR[m.sport] || '#aaa';
+    const isRacing = m.sport === 'Greyhound' || m.sport === 'Horse Racing';
+    const timeParts = (m.time || '').split(' ');
+
+    const row = document.createElement('div');
+    row.className = 'upcoming-row';
+    row.setAttribute('data-match-id', m.id);
+    row.onclick = () => openMatchModal(m.id);
+
+    // Time column
+    const timeCol = document.createElement('div');
+    timeCol.className = 'upcoming-time';
+    timeCol.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--text)">${timeParts.slice(0,-1).join(' ')}</div><div>${timeParts.slice(-2).join(' ')}</div>`;
+
+    // Info column
+    const infoCol = document.createElement('div');
+    const matchLabel = isRacing ? `R${m.raceNumber || '?'} · ${m.venue || 'TBC'}` : `${m.home || '?'} <span>vs</span> ${m.away || '?'}`;
+    const subLabel = isRacing
+      ? `🏁 ${m.distance || '?'}m · ${m.comp || ''} · ${m.runners?.length || '?'} runners`
+      : `📍 ${m.venue || 'TBC'} · ${m.comp || ''}`;
+    infoCol.innerHTML = `${tag(m.sport, sc)}<div class="upcoming-match" style="margin-top:4px">${matchLabel}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${subLabel}</div>`;
+
+    // AI Pick column
+    const aiCol = document.createElement('div');
+    aiCol.style.textAlign = 'center';
+    const conf = typeof m.confidence === 'number' ? m.confidence : 0;
+    aiCol.innerHTML = `<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:4px">AI PICK</div><div style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#10b981">${m.pick || '—'}</div><div style="font-size:11px;color:${confColor(conf)};font-family:var(--mono)">${conf}%</div>`;
+
+    // Odds column
+    const oddsCol = document.createElement('div');
+    oddsCol.className = 'upcoming-odds-row';
+    let oddsHTML = '';
+    if (m.homeOdds) oddsHTML += `<div class="mini-odd${m.valueBet && m.pick === m.home ? ' best' : ''}">${m.homeOdds}</div>`;
+    if (m.drawOdds) oddsHTML += `<div class="mini-odd">D ${m.drawOdds}</div>`;
+    if (m.awayOdds) oddsHTML += `<div class="mini-odd${m.valueBet && m.pick === m.away ? ' best' : ''}">${m.awayOdds}</div>`;
+    oddsHTML += `<button class="mini-odd" style="background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.25);color:#10b981" onclick="event.stopPropagation();openBetFormWithMatch('${m.id}')">+ BET</button>`;
+    oddsCol.innerHTML = oddsHTML;
+
+    row.appendChild(timeCol);
+    row.appendChild(infoCol);
+    row.appendChild(aiCol);
+    row.appendChild(oddsCol);
+    frag.appendChild(row);
+  }
+
+  container.innerHTML = '';
+  container.appendChild(frag);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2519,63 +2547,88 @@ function filterBets(sport, btn) {
   out = out.reverse();
   document.getElementById('bets-count').textContent = out.length+' bets';
 
-  // ── Desktop: table view ──
-  document.getElementById('bets-tbody').innerHTML = out.length
-    ? out.map(b=>{
-        const pnl=calcPnl(b);
-        return `<tr>
-          <td style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap">${b.date}</td>
-          <td>${sportTag(b.sport)}</td>
-          <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.event}</td>
-          <td style="color:var(--muted);font-size:12px;white-space:nowrap">${b.bet}</td>
-          <td style="font-family:var(--mono);font-weight:700">$${b.stake}</td>
-          <td style="font-family:var(--mono);font-weight:700;color:#f59e0b">${b.odds}x</td>
-          <td>${b.result==='PENDING'?`<div style="display:flex;gap:3px;align-items:center">${resultTag(b.result)}<button onclick="quickUpdateResult(${b.id},'WIN')" title="Mark WIN" style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">W</button><button onclick="quickUpdateResult(${b.id},'LOSS')" title="Mark LOSS" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">L</button></div>`:resultTag(b.result)}</td>
+  // ── Desktop table: DocumentFragment build ──
+  const tbody = document.getElementById('bets-tbody');
+  if (tbody) {
+    const frag = document.createDocumentFragment();
+    if (!out.length) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="11" class="empty">No bets logged yet.</td>';
+      frag.appendChild(tr);
+    } else {
+      for (const b of out) {
+        const pnl = calcPnl(b);
+        const tr = document.createElement('tr');
+        const pendingBtns = b.result === 'PENDING'
+          ? `<div style="display:flex;gap:3px;align-items:center">${resultTag(b.result)}<button onclick="quickUpdateResult(${b.id},'WIN')" title="Mark WIN" style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">W</button><button onclick="quickUpdateResult(${b.id},'LOSS')" title="Mark LOSS" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">L</button></div>`
+          : resultTag(b.result);
+        const confCell = b.confidence
+          ? `<div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:60px"><div class="prog-fill" style="width:${b.confidence}%;background:${confColor(b.confidence)}"></div></div><span style="font-size:11px;font-family:var(--mono);color:${confColor(b.confidence)}">${b.confidence}%</span></div>`
+          : '—';
+        tr.innerHTML = `
+          <td style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap">${b.date||'—'}</td>
+          <td>${sportTag(b.sport||'—')}</td>
+          <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.event||'—'}</td>
+          <td style="color:var(--muted);font-size:12px;white-space:nowrap">${b.bet||'—'}</td>
+          <td style="font-family:var(--mono);font-weight:700">$${b.stake||0}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:#f59e0b">${b.odds||'?'}x</td>
+          <td>${pendingBtns}</td>
           <td style="font-family:var(--mono);font-weight:700;color:${pnl>=0?'#10b981':'#ef4444'}">${fmtPnl(pnl)}</td>
-          <td>${b.confidence?`<div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:60px"><div class="prog-fill" style="width:${b.confidence}%;background:${confColor(b.confidence)}"></div></div><span style="font-size:11px;font-family:var(--mono);color:${confColor(b.confidence)}">${b.confidence}%</span></div>`:'—'}</td>
-          <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.notes||''}">${b.notes||'—'}</td>
-          <td><button class="action-btn" onclick="openEdit(${b.id})">edit</button><button class="action-btn del" onclick="confirmDelete(${b.id})">del</button></td>
-        </tr>`;
-      }).join('')
-    : `<tr><td colspan="11" class="empty">No bets logged yet.</td></tr>`;
+          <td>${confCell}</td>
+          <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(b.notes||'').replace(/"/g,'&quot;')}">${b.notes||'—'}</td>
+          <td><button class="action-btn" onclick="openEdit(${b.id})">edit</button><button class="action-btn del" onclick="confirmDelete(${b.id})">del</button></td>`;
+        frag.appendChild(tr);
+      }
+    }
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  }
 
-  // ── Mobile: card view ──
+  // ── Mobile cards: DocumentFragment build ──
   const cardsEl = document.getElementById('bets-cards');
   if (!cardsEl) return;
-  cardsEl.innerHTML = out.length
-    ? out.map(b => {
-        const pnl = calcPnl(b);
-        const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
-        return `<div class="bet-card">
-          <div class="bet-card-top">
-            ${sportTag(b.sport)}
-            <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.date}</span>
-          </div>
-          <div class="bet-card-event">${b.event}</div>
-          <div class="bet-card-row">
-            <span class="bet-card-type">${b.bet}</span>
-            <span class="bet-card-stake">$${b.stake}</span>
-            <span class="bet-card-odds">${b.odds}x</span>
-            ${resultTag(b.result)}
-            <span class="bet-card-pnl" style="color:${pnlColor}">${fmtPnl(pnl)}</span>
-          </div>
-          ${b.result==='PENDING' ? `<div style="display:flex;gap:5px;margin-top:8px">
-            <button onclick="quickUpdateResult(${b.id},'WIN')" style="flex:1;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✓ WIN</button>
-            <button onclick="quickUpdateResult(${b.id},'PLACE')" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">PLACE</button>
-            <button onclick="quickUpdateResult(${b.id},'LOSS')" style="flex:1;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✗ LOSS</button>
-          </div>` : ''}
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="action-btn" onclick="openEdit(${b.id})" style="flex:1;padding:8px">✏️ Edit</button>
-            <button class="action-btn del" onclick="confirmDelete(${b.id})" style="padding:8px 12px">🗑️</button>
-          </div>
+  const cardFrag = document.createDocumentFragment();
+
+  if (!out.length) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'empty';
+    emptyDiv.style.cssText = 'padding:40px;text-align:center';
+    emptyDiv.innerHTML = `<div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;margin-bottom:8px">NO BETS YET</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">Start tracking your bets to see your stats here.</div>
+      <button class="btn-primary" onclick="openBetForm()">+ Log Your First Bet</button>`;
+    cardFrag.appendChild(emptyDiv);
+  } else {
+    for (const b of out) {
+      const pnl = calcPnl(b);
+      const pnlColor = pnl >= 0 ? '#10b981' : '#ef4444';
+      const card = document.createElement('div');
+      card.className = 'bet-card';
+      const pendingActions = b.result === 'PENDING' ? `<div style="display:flex;gap:5px;margin-top:8px">
+        <button onclick="quickUpdateResult(${b.id},'WIN')" style="flex:1;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✓ WIN</button>
+        <button onclick="quickUpdateResult(${b.id},'PLACE')" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">PLACE</button>
+        <button onclick="quickUpdateResult(${b.id},'LOSS')" style="flex:1;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✗ LOSS</button>
+      </div>` : '';
+      card.innerHTML = `
+        <div class="bet-card-top">${sportTag(b.sport||'—')}<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.date||'—'}</span></div>
+        <div class="bet-card-event">${b.event||'—'}</div>
+        <div class="bet-card-row">
+          <span class="bet-card-type">${b.bet||'—'}</span>
+          <span class="bet-card-stake">$${b.stake||0}</span>
+          <span class="bet-card-odds">${b.odds||'?'}x</span>
+          ${resultTag(b.result||'PENDING')}
+          <span class="bet-card-pnl" style="color:${pnlColor}">${fmtPnl(pnl)}</span>
+        </div>
+        ${pendingActions}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="action-btn" onclick="openEdit(${b.id})" style="flex:1;padding:8px">✏️ Edit</button>
+          <button class="action-btn del" onclick="confirmDelete(${b.id})" style="padding:8px 12px">🗑️</button>
         </div>`;
-      }).join('')
-    : `<div class="empty" style="padding:40px;text-align:center">
-        <div style="font-size:40px;margin-bottom:12px">📋</div>
-        <div style="font-family:'Oswald',sans-serif;font-size:16px;margin-bottom:8px">NO BETS YET</div>
-        <div style="color:var(--muted);font-size:13px;margin-bottom:16px">Start tracking your bets to see your stats here.</div>
-        <button class="btn-primary" onclick="openBetForm()">+ Log Your First Bet</button>
-      </div>`;
+      cardFrag.appendChild(card);
+    }
+  }
+  cardsEl.innerHTML = '';
+  cardsEl.appendChild(cardFrag);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2901,7 +2954,7 @@ async function requestAIAnalysis(m) {
       const el = document.getElementById('md-ai-loading');
       if (el) {
         if (res.status === 401) {
-          el.innerHTML = '🔒 Session expired — please <a href="#" onclick="closeMatchModal();doLogout();return false" style="color:var(--accent);text-decoration:underline">sign in again</a>';
+          el.innerHTML = '🔒 Session expired — please <a href="#" onclick="closeMatchModal();openProfileModal();return false" style="color:var(--accent);text-decoration:underline">sign in again</a>';
         } else if (data?.errorType === 'credits') {
           el.innerHTML = '💳 AI credits exhausted — add credits at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);text-decoration:underline">console.anthropic.com</a> then reload';
         } else {
@@ -3439,7 +3492,7 @@ async function runAIAnalysis() {
   try {
     const res = await fetch('/api/analyse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-session-token': getToken() || '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         home: team1, away: team2, sport,
         homeOdds: odds1, awayOdds: odds2,
@@ -4485,17 +4538,52 @@ function renderHomePending() {
 // SHARE AI PICK
 // ═══════════════════════════════════════════════════════════════════
 function shareAIPick(matchId) {
-  const m = UPCOMING.find(x=>String(x.id)===String(matchId));
-  if (!m) return;
-  const ai = m.aiAnalysis;
-  const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
-  const valueLine = m.valueBet ? '\n⚡ VALUE BET DETECTED' : '';
-  const matchLine = m.isRacing ? `R${m.raceNumber} ${m.venue} · ${m.distance}m` : `${m.home} vs ${m.away}`;
-  const text = `🤖 THE EDGE AI PICK\n\n${m.sport} · ${m.time}\n${matchLine}\n\n✅ PICK: ${m.pick} @ ${oddsVal}x\n📊 CONFIDENCE: ${m.confidence}%${valueLine}\n\n${ai?.summary||''}\n\nedgebets.net`;
-  if (navigator.share) {
-    navigator.share({ title: 'The Edge AI Pick', text }).catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(text).then(()=>showToast('📋 Copied to clipboard!')).catch(()=>showToast('⚠️ Could not copy', false));
+  try {
+    if (!matchId) { showToast('⚠️ No match selected', false); return; }
+    const m = UPCOMING.find(x => String(x.id) === String(matchId));
+    if (!m) { showToast('⚠️ Match data not found — odds may have refreshed', false); return; }
+
+    // Safely resolve odds — pick may not align with home/away (e.g. racing, draw picks)
+    const oddsVal = (() => {
+      if (m.pick === m.home && m.homeOdds) return m.homeOdds;
+      if (m.pick === m.away && m.awayOdds) return m.awayOdds;
+      if (m.drawOdds) return m.drawOdds;
+      return null;
+    })();
+
+    const ai = m.aiAnalysis || {};
+    const isRacing = m.sport === 'Greyhound' || m.sport === 'Horse Racing';
+    const matchLine = isRacing
+      ? `R${m.raceNumber || '?'} ${m.venue || 'TBC'}${m.distance ? ` · ${m.distance}m` : ''}`
+      : `${m.home || '?'} vs ${m.away || '?'}`;
+
+    const lines = [
+      '🤖 THE EDGE AI PICK',
+      '',
+      `${m.sport || 'Sport'} · ${m.time || 'TBC'}`,
+      matchLine,
+      '',
+      `✅ PICK: ${m.pick || '—'}${oddsVal ? ` @ ${oddsVal}x` : ''}`,
+      typeof m.confidence === 'number' ? `📊 CONFIDENCE: ${m.confidence}%` : '',
+      m.valueBet ? '⚡ VALUE BET DETECTED' : '',
+      ai.summary ? `\n${ai.summary}` : '',
+      '',
+      'edgebets.net'
+    ].filter(Boolean).join('\n');
+
+    if (navigator.share) {
+      navigator.share({ title: 'The Edge AI Pick', text: lines }).catch(() => {});
+    } else if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(lines)
+        .then(() => showToast('📋 Copied to clipboard!'))
+        .catch(() => showToast('⚠️ Could not copy — try long-pressing to select', false));
+    } else {
+      // Fallback for older browsers without clipboard API
+      showToast('⚠️ Sharing not supported on this browser', false);
+    }
+  } catch (err) {
+    console.error('[shareAIPick] Error:', err);
+    showToast('⚠️ Something went wrong sharing', false);
   }
 }
 
