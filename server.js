@@ -40,7 +40,7 @@ function httpsReq(options, body = null) {
 }
 
 // In-memory store — loaded from JSONBin on startup, written back on every change
-let store = { users: {}, bets: {}, tipping: { rounds: {}, results: {}, activeRound: null }, comps: { comps: {}, memberships: {} } };
+let store = { users: {}, bets: {}, tipping: { rounds: {}, results: {}, activeRound: null }, comps: { comps: {}, memberships: {} }, aiCache: {} };
 let storeLoaded = false;
 
 async function loadStore() {
@@ -64,7 +64,15 @@ async function loadStore() {
       store.bets    = data.bets    || {};
       store.tipping = data.tipping || { rounds: {}, results: {}, activeRound: null };
       store.comps   = data.comps   || { comps: {}, memberships: {} };
-      console.log(`✅ Store loaded — ${Object.keys(store.users).length} users`);
+      store.aiCache = data.aiCache || {};
+      // Restore warm AI entries from persisted store (skip stale ones)
+      const now = Date.now();
+      let restored = 0;
+      for (const [id, entry] of Object.entries(store.aiCache)) {
+        if (entry?.ts && now - entry.ts < AI_TTL) { aiCache[id] = entry; restored++; }
+        else delete store.aiCache[id]; // prune stale entries
+      }
+      console.log(`✅ Store loaded — ${Object.keys(store.users).length} users | AI cache: ${restored} warm entries`);
     } else {
       console.error('[loadStore] bad status:', r.status, r.body.substring(0,100));
     }
@@ -502,9 +510,8 @@ async function getRacingEvents() {
 // ═══════════════════════════════════════════════════════════════════
 // AI ANALYSIS
 // ═══════════════════════════════════════════════════════════════════
-const aiCache = {};
-const aiQueue = [];
-let aiBusy = false;
+const aiCache    = {};          // in-memory: eventId → { data, ts }
+const aiInflight = {};          // dedup: eventId → Promise (prevents duplicate concurrent calls)
 
 function getSportContext(sport) {
   const contexts = {
@@ -571,6 +578,17 @@ Use boxing stats: punches landed per round, knockdown ratio, reach, southpaw/ort
 async function analyseMatch(ev) {
   if (!ANTHROPIC_API_KEY) return null;
   if (isFresh(aiCache, ev.id, AI_TTL)) return aiCache[ev.id].data;
+  // Deduplication — if another request is already analysing this match, share the result
+  if (aiInflight[ev.id]) {
+    console.log(`[AI] dedup — awaiting in-flight analysis for ${ev.home} vs ${ev.away}`);
+    return aiInflight[ev.id];
+  }
+  const promise = _doAnalyseMatch(ev).finally(() => { delete aiInflight[ev.id]; });
+  aiInflight[ev.id] = promise;
+  return promise;
+}
+
+async function _doAnalyseMatch(ev) {
   try {
     const home = ev.home, away = ev.away, sport = ev.sport;
     const oddsLine = `${home} @ ${ev.homeOdds}, ${away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ''}`;
@@ -650,7 +668,16 @@ Return this exact JSON structure with ALL fields filled in:
     }
     // Validate required fields exist
     if (!analysis.recommendation || !analysis.confidence) throw new Error('Missing required AI fields');
-    aiCache[ev.id] = { data: analysis, ts: Date.now() };
+    const entry = { data: analysis, ts: Date.now() };
+    aiCache[ev.id] = entry;
+    // Persist to store so it survives server restarts
+    store.aiCache[ev.id] = entry;
+    // Prune any stale entries from store before saving to keep JSONBin size manageable
+    const now = Date.now();
+    for (const id of Object.keys(store.aiCache)) {
+      if (!store.aiCache[id]?.ts || now - store.aiCache[id].ts >= AI_TTL) delete store.aiCache[id];
+    }
+    saveStore().catch(e => console.error('[AI] store save error:', e.message));
     console.log(`[AI] analysed ${home} vs ${away} — conf:${analysis.confidence}% pick:${analysis.recommendation}${stopReason === 'max_tokens' ? ' (recovered)' : ''}`);
     return analysis;
   } catch (err) { console.error(`AI failed for ${ev.home} vs ${ev.away}:`, err.message); return null; }
