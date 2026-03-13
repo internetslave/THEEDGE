@@ -1134,8 +1134,53 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
         </select>
       </div>
     </div>
-    <button onclick="saveQuickBet()" style="width:100%;background:linear-gradient(90deg,#f0b429,#f97316);color:#000;border:none;border-radius:12px;padding:16px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer">SAVE BET →</button>
-    <button onclick="openFullBetForm()" style="width:100%;background:transparent;border:none;color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;padding:12px 0 0">more options →</button>
+    <button onclick="saveQuickBet()" style="width:100%;background:linear-gradient(90deg,#f0b429,#f97316);color:#000;border:none;border-radius:12px;padding:16px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-bottom:10px">SAVE BET →</button>
+    <button onclick="openBookieSheetFromQB()" style="width:100%;background:rgba(0,91,212,.12);border:1px solid rgba(0,91,212,.4);color:#60a5fa;border-radius:12px;padding:14px;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;margin-bottom:4px" onmouseover="this.style.background='rgba(0,91,212,.22)'" onmouseout="this.style.background='rgba(0,91,212,.12)'">🏦 PLACE AT YOUR BOOKIE</button>
+    <button onclick="openFullBetForm()" style="width:100%;background:transparent;border:none;color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;padding:10px 0 0">more options →</button>
+  </div>
+</div>
+
+<!-- ══════════ BOOKIE REDIRECT SHEET ══════════ -->
+<div id="bookie-overlay" onclick="closeBookieSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:700;backdrop-filter:blur(4px)"></div>
+<div id="bookie-sheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;z-index:701;padding:24px 24px 40px;box-shadow:0 -20px 60px rgba(0,0,0,.7)">
+  <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px">🏦 PLACE AT YOUR BOOKIE</div>
+    <button onclick="closeBookieSheet()" style="background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px;line-height:1">✕</button>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-family:var(--mono)">We'll open your bookie and copy your bet to clipboard</div>
+
+  <!-- Bet summary card -->
+  <div id="bk-summary" style="background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.25);border-radius:12px;padding:14px 16px;margin-bottom:20px">
+    <div id="bk-event" style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:6px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px">YOUR PICK</div>
+        <div id="bk-pick" style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;color:#f0b429"></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px">ODDS</div>
+        <div id="bk-odds" style="font-family:var(--mono);font-size:22px;font-weight:700"></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px">STAKE</div>
+        <div id="bk-stake" style="font-family:var(--mono);font-size:22px;font-weight:700;color:#10b981"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works blurb -->
+  <div style="font-size:11px;color:var(--muted);background:var(--bg3);border-radius:8px;padding:10px 14px;margin-bottom:20px;line-height:1.6">
+    💡 Tap a bookmaker below — we'll open their <strong style="color:var(--text2)" id="bk-sport-name"></strong> page and copy your bet details to your clipboard. Just paste it in their search or bet slip.
+  </div>
+
+  <!-- Bookie grid -->
+  <div id="bk-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+
+  <!-- Preferred bookie shortcut -->
+  <div id="bk-preferred-wrap" style="display:none;border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:var(--mono);letter-spacing:.5px">YOUR PREFERRED BOOKIE</div>
+    <button id="bk-preferred-btn" onclick="goPreferredBookie()" style="width:100%;border:none;border-radius:12px;padding:16px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:1px;cursor:pointer"></button>
   </div>
 </div>
 
@@ -2072,7 +2117,10 @@ function renderTips() {
             </div>
           </div>`:''}
 
-          <button class="btn-primary" style="width:100%;margin-top:4px" onclick="openBetFormWithMatch('${m.id}')">+ LOG BET ON THIS MATCH</button>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn-primary" style="flex:1" onclick="openBetFormWithMatch('${m.id}')">+ LOG BET</button>
+            <button onclick="openMatchModal('${m.id}')" style="background:rgba(0,91,212,.14);border:1px solid rgba(0,91,212,.45);color:#60a5fa;border-radius:10px;padding:12px 16px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.background='rgba(0,91,212,.25)'" onmouseout="this.style.background='rgba(0,91,212,.14)'">🏦 BOOKIE</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -3037,8 +3085,9 @@ function openMatchModal(matchId) {
     ${extraMarketsHtml}
     ${valueBadge}
     ${aiSection}
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="btn-primary" style="flex:1" onclick="closeMatchModal();openQuickBet('${m.id}')">+ LOG BET</button>
+    <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+      <button class="btn-primary" style="flex:1;min-width:120px" onclick="closeMatchModal();openQuickBet('${m.id}')">+ LOG BET</button>
+      <button onclick="closeMatchModal();openBookieSheet('${m.id}','${(m.pick||'').replace(/'/g,"\\'")}','${m.pick===m.home?m.homeOdds:m.pick===m.away?m.awayOdds:m.drawOdds||''}','${m.sport}','')" style="flex:1;min-width:140px;background:rgba(0,91,212,.14);border:1px solid rgba(0,91,212,.45);color:#60a5fa;border-radius:10px;padding:12px 16px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;white-space:nowrap" onmouseover="this.style.background='rgba(0,91,212,.25)'" onmouseout="this.style.background='rgba(0,91,212,.14)'">🏦 PLACE AT BOOKIE</button>
       <button data-testid="button-share-pick" onclick="shareAIPick('${m.id}')" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:12px 16px;cursor:pointer;font-size:18px;transition:all .15s;min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation" title="Share this pick" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">📤</button>
     </div>
   `;
@@ -3449,7 +3498,7 @@ showLbSport = async function(sport, btn) {
 
 // Enter key on login
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ closeBetForm(); closeConfirm(); closeAIModal(); closeMatchModal(); closeQuickBet(); }
+  if(e.key==='Escape'){ closeBetForm(); closeConfirm(); closeAIModal(); closeMatchModal(); closeQuickBet(); closeBookieSheet(); }
   if(e.key==='Enter' && document.getElementById('login-screen').style.display!=='none'){
     const isSignup = document.getElementById('auth-signup').style.display!=='none';
     if(isSignup) doSignUp(); else doSignIn();
@@ -3727,6 +3776,143 @@ function exportBetsCSV() {
   a.href = url; a.download = `edgeiq-bets-${new Date().toISOString().slice(0,10)}.csv`;
   a.click(); URL.revokeObjectURL(url);
   showToast('✅ Bets exported as CSV');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOOKIE REDIRECT — "Place at Your Bookie"
+// ═══════════════════════════════════════════════════════════════════
+const BOOKIES = [
+  { name:'Sportsbet', color:'#005bd4', bg:'rgba(0,91,212,.15)', border:'rgba(0,91,212,.5)',
+    urls:{ AFL:'https://www.sportsbet.com.au/betting/australian-rules', NRL:'https://www.sportsbet.com.au/betting/rugby-league', NBA:'https://www.sportsbet.com.au/betting/basketball', Soccer:'https://www.sportsbet.com.au/betting/soccer', UFC:'https://www.sportsbet.com.au/betting/ufc', Boxing:'https://www.sportsbet.com.au/betting/boxing', 'Horse Racing':'https://www.sportsbet.com.au/horse-racing', Greyhound:'https://www.sportsbet.com.au/greyhound-racing' } },
+  { name:'Ladbrokes', color:'#e50000', bg:'rgba(229,0,0,.12)', border:'rgba(229,0,0,.45)',
+    urls:{ AFL:'https://www.ladbrokes.com.au/sport/australian-rules-football', NRL:'https://www.ladbrokes.com.au/sport/rugby-league', NBA:'https://www.ladbrokes.com.au/sport/basketball', Soccer:'https://www.ladbrokes.com.au/sport/soccer', UFC:'https://www.ladbrokes.com.au/sport/ufc', Boxing:'https://www.ladbrokes.com.au/sport/boxing', 'Horse Racing':'https://www.ladbrokes.com.au/racing/horse-racing', Greyhound:'https://www.ladbrokes.com.au/racing/greyhound-racing' } },
+  { name:'TAB', color:'#00a650', bg:'rgba(0,166,80,.12)', border:'rgba(0,166,80,.45)',
+    urls:{ AFL:'https://www.tab.com.au/sports/betting/australian-rules', NRL:'https://www.tab.com.au/sports/betting/rugby-league', NBA:'https://www.tab.com.au/sports/betting/basketball', Soccer:'https://www.tab.com.au/sports/betting/soccer', UFC:'https://www.tab.com.au/sports/betting/mma', Boxing:'https://www.tab.com.au/sports/betting/boxing', 'Horse Racing':'https://www.tab.com.au/racing', Greyhound:'https://www.tab.com.au/racing' } },
+  { name:'Neds', color:'#ff6600', bg:'rgba(255,102,0,.12)', border:'rgba(255,102,0,.45)',
+    urls:{ AFL:'https://www.neds.com.au/sports/australian-rules', NRL:'https://www.neds.com.au/sports/rugby-league', NBA:'https://www.neds.com.au/sports/basketball', Soccer:'https://www.neds.com.au/sports/soccer', UFC:'https://www.neds.com.au/sports/ufc', Boxing:'https://www.neds.com.au/sports/boxing', 'Horse Racing':'https://www.neds.com.au/racing/horse-racing', Greyhound:'https://www.neds.com.au/racing/greyhound-racing' } },
+  { name:'Pointsbet', color:'#d0021b', bg:'rgba(208,2,27,.12)', border:'rgba(208,2,27,.45)',
+    urls:{ AFL:'https://pointsbet.com.au/sports/australian-rules-football', NRL:'https://pointsbet.com.au/sports/rugby-league', NBA:'https://pointsbet.com.au/sports/basketball/nba', Soccer:'https://pointsbet.com.au/sports/soccer', UFC:'https://pointsbet.com.au/sports/ufc', Boxing:'https://pointsbet.com.au/sports/boxing', 'Horse Racing':'https://pointsbet.com.au/racing', Greyhound:'https://pointsbet.com.au/racing' } },
+  { name:'Unibet', color:'#147b45', bg:'rgba(20,123,69,.12)', border:'rgba(20,123,69,.45)',
+    urls:{ AFL:'https://www.unibet.com.au/betting/sports/australian-rules-football', NRL:'https://www.unibet.com.au/betting/sports/rugby-league', NBA:'https://www.unibet.com.au/betting/sports/basketball', Soccer:'https://www.unibet.com.au/betting/sports/soccer', UFC:'https://www.unibet.com.au/betting/sports/mma', Boxing:'https://www.unibet.com.au/betting/sports/boxing', 'Horse Racing':'https://www.unibet.com.au/betting/racing', Greyhound:'https://www.unibet.com.au/betting/racing' } },
+  { name:'Betfair', color:'#f5a623', bg:'rgba(245,166,35,.1)', border:'rgba(245,166,35,.4)',
+    urls:{ AFL:'https://www.betfair.com.au/exchange/plus/australian-rules-betting', NRL:'https://www.betfair.com.au/exchange/plus/rugby-league-betting', NBA:'https://www.betfair.com.au/exchange/plus/basketball-betting', Soccer:'https://www.betfair.com.au/exchange/plus/soccer-betting', UFC:'https://www.betfair.com.au/exchange/plus/ufc-betting', Boxing:'https://www.betfair.com.au/exchange/plus/boxing-betting', 'Horse Racing':'https://www.betfair.com.au/exchange/plus/horse-racing-betting', Greyhound:'https://www.betfair.com.au/exchange/plus/greyhound-racing-betting' } },
+  { name:'Betright', color:'#7c3aed', bg:'rgba(124,58,237,.12)', border:'rgba(124,58,237,.45)',
+    urls:{ AFL:'https://betright.com.au/sports/australian-rules', NRL:'https://betright.com.au/sports/rugby-league', NBA:'https://betright.com.au/sports/basketball', Soccer:'https://betright.com.au/sports/soccer', UFC:'https://betright.com.au/sports/mma', Boxing:'https://betright.com.au/sports/boxing', 'Horse Racing':'https://betright.com.au/racing/horse', Greyhound:'https://betright.com.au/racing/greyhound' } },
+  { name:'BlueBet', color:'#1e6abf', bg:'rgba(30,106,191,.12)', border:'rgba(30,106,191,.45)',
+    urls:{ AFL:'https://www.bluebet.com.au/sports/australian-rules', NRL:'https://www.bluebet.com.au/sports/rugby-league', NBA:'https://www.bluebet.com.au/sports/basketball', Soccer:'https://www.bluebet.com.au/sports/soccer', UFC:'https://www.bluebet.com.au/sports/mma', Boxing:'https://www.bluebet.com.au/sports/boxing', 'Horse Racing':'https://www.bluebet.com.au/racing', Greyhound:'https://www.bluebet.com.au/racing' } },
+];
+
+const BOOKIE_PREF_KEY = 'edgeiq-preferred-bookie';
+let _bookieMatchId = null;
+let _bookiePick    = '';
+let _bookieOdds    = '';
+let _bookieSport   = '';
+let _bookieStake   = '';
+
+function openBookieSheet(matchId, pick, odds, sport, stake) {
+  _bookieMatchId = matchId;
+  _bookiePick    = pick || '';
+  _bookieOdds    = odds || '';
+  _bookieSport   = sport || '';
+  _bookieStake   = stake || '';
+
+  const m = UPCOMING.find(x => String(x.id) === String(matchId));
+  const eventLabel = m ? (m.isRacing ? `R${m.raceNumber} · ${m.venue} · ${m.time}` : `${m.home} vs ${m.away} · ${m.time}`) : '';
+
+  document.getElementById('bk-event').textContent = eventLabel;
+  document.getElementById('bk-pick').textContent  = pick || '—';
+  document.getElementById('bk-odds').textContent  = odds ? odds + 'x' : '—';
+  document.getElementById('bk-stake').textContent = stake ? '$' + parseFloat(stake).toFixed(2) : '—';
+  document.getElementById('bk-sport-name').textContent = sport || 'sports';
+
+  // Build bookie grid
+  const grid = document.getElementById('bk-grid');
+  grid.innerHTML = BOOKIES.map(b => `
+    <button onclick="sendToBookie('${b.name}')"
+      style="background:${b.bg};border:1px solid ${b.border};color:${b.color};border-radius:12px;padding:14px 8px;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;width:100%"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px ${b.bg}'"
+      onmouseout="this.style.transform='';this.style.boxShadow=''">
+      ${b.name}
+    </button>`).join('');
+
+  // Preferred bookie shortcut
+  const pref = localStorage.getItem(BOOKIE_PREF_KEY);
+  const prefBookie = pref && BOOKIES.find(b => b.name === pref);
+  const prefWrap = document.getElementById('bk-preferred-wrap');
+  const prefBtn  = document.getElementById('bk-preferred-btn');
+  if (prefBookie) {
+    prefWrap.style.display = 'block';
+    prefBtn.textContent = `⚡ Quick-send to ${prefBookie.name}`;
+    prefBtn.style.background = prefBookie.bg;
+    prefBtn.style.border = `1px solid ${prefBookie.border}`;
+    prefBtn.style.color = prefBookie.color;
+  } else {
+    prefWrap.style.display = 'none';
+  }
+
+  document.getElementById('bookie-overlay').style.display = 'block';
+  document.getElementById('bookie-sheet').style.display   = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBookieSheet() {
+  document.getElementById('bookie-overlay').style.display = 'none';
+  document.getElementById('bookie-sheet').style.display   = 'none';
+  document.body.style.overflow = '';
+}
+
+function sendToBookie(bookieName) {
+  const bookie = BOOKIES.find(b => b.name === bookieName);
+  if (!bookie) return;
+
+  // Save as preferred
+  localStorage.setItem(BOOKIE_PREF_KEY, bookieName);
+
+  // Build clipboard text
+  const clipText = [
+    `${_bookiePick}`,
+    _bookieOdds ? `Odds: ${_bookieOdds}x` : '',
+    _bookieStake ? `Stake: $${parseFloat(_bookieStake).toFixed(2)}` : '',
+    _bookieSport ? `Sport: ${_bookieSport}` : '',
+    '— via edgebets.net'
+  ].filter(Boolean).join('\n');
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(clipText).catch(() => {});
+
+  // Open bookie URL
+  const url = bookie.urls[_bookieSport] || bookie.urls['AFL'] || 'https://www.sportsbet.com.au';
+  window.open(url, '_blank', 'noopener');
+
+  showToast(`🏦 Opening ${bookieName} — bet details copied to clipboard!`);
+  closeBookieSheet();
+}
+
+function goPreferredBookie() {
+  const pref = localStorage.getItem(BOOKIE_PREF_KEY);
+  if (pref) sendToBookie(pref);
+}
+
+// Open bookie sheet from Quick Bet modal (reads current QB state)
+function openBookieSheetFromQB() {
+  const m = quickBetMatch;
+  if (!m) return;
+  let pick, odds;
+  if (m.isRacing && m.runners) {
+    const idx = parseInt(document.getElementById('qb-runner-select').value) || 0;
+    const r = m.runners[idx];
+    pick = r ? r.name : m.pick;
+    odds = r && r.odds < 99 ? r.odds.toFixed(2) : '';
+  } else if (m._marketLabel) {
+    pick = m._marketLabel;
+    odds = m._marketOdds ? m._marketOdds.toFixed(2) : '';
+  } else {
+    pick = m.pick;
+    const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
+    odds = oddsVal ? oddsVal.toFixed(2) : '';
+  }
+  const stake = document.getElementById('qb-stake').value;
+  openBookieSheet(m.id, pick, odds, m.sport, stake);
 }
 
 // ═══════════════════════════════════════════════════════════════════
