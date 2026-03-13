@@ -1602,7 +1602,8 @@ async function fetchLiveOdds(forceRefresh = false) {
     if (data.success && data.events?.length) {
       UPCOMING = data.events.map(enrichEvent);
       oddsLoaded = true;
-      oddsLastUpdated = Date.now();
+      // Use server cacheAge to set the true time odds were last fetched (not just when client received them)
+      oddsLastUpdated = data.cacheAge ? Date.now() - (data.cacheAge * 1000) : Date.now();
       if (data.nextRefresh)        oddsNextRefresh = data.nextRefresh;
       if (data.creditsRemaining != null) {
         oddsCreditsRemaining = data.creditsRemaining;
@@ -1653,14 +1654,17 @@ document.addEventListener('visibilitychange', () => {
 
 function updateLastUpdatedBadge() {
   const el = document.getElementById('live-badge-text');
-  if (!el || !oddsLastUpdated) return;
+  if (!el) return;
+  if (!oddsLastUpdated) { el.textContent = 'LIVE ODDS'; return; }
   const mins = Math.floor((Date.now() - oddsLastUpdated) / 60000);
   el.textContent = mins < 1 ? 'JUST UPDATED' : mins < 60 ? `UPDATED ${mins}m AGO` : `UPDATED ${Math.floor(mins/60)}h AGO`;
 }
 
 function showOddsLoading(show) {
   const el = document.getElementById('live-badge-text');
-  if (el) el.textContent = show ? 'LOADING...' : (oddsLastUpdated ? 'JUST UPDATED' : 'LIVE ODDS');
+  if (!el) return;
+  if (show) { el.textContent = 'LOADING...'; }
+  else { updateLastUpdatedBadge(); } // show true age, not "JUST UPDATED"
 }
 
 function updateCreditsBadge() {
