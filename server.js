@@ -651,7 +651,7 @@ Use boxing stats: punches landed per round, knockdown ratio, reach, southpaw/ort
   return contexts[sport] || '';
 }
 
-async function analyseMatch(ev) {
+async function analyseMatch(ev, playerMarkets = null) {
   if (!ANTHROPIC_API_KEY) return null;
   if (isFresh(aiCache, ev.id, AI_TTL)) return aiCache[ev.id].data;
   // Deduplication — if another request is already analysing this match, share the result
@@ -673,12 +673,24 @@ async function _doAnalyseMatch(ev) {
     const dogTeam = ev.homeOdds <= ev.awayOdds ? away : home;
     const sportCtx = getSportContext(sport);
 
+    let playerSection = '';
+    if (playerMarkets) {
+      if (sport === 'AFL') {
+        if (playerMarkets.firstGoal?.length) playerSection += `\nFIRST GOAL / ANYTIME GOAL SCORER OPTIONS: ${playerMarkets.firstGoal.join(', ')}\n`;
+        if (playerMarkets.disposals?.length) playerSection += `DISPOSALS (20+/25+) PLAYER OPTIONS: ${playerMarkets.disposals.join(', ')}\n`;
+      } else if (sport === 'NRL') {
+        if (playerMarkets.tryscorers?.length) playerSection += `\nTRY SCORER OPTIONS: ${playerMarkets.tryscorers.join(', ')}\n`;
+      } else if (sport === 'NBA') {
+        if (playerMarkets.pointsPlayers?.length) playerSection += `\nPLAYER POINTS OPTIONS: ${playerMarkets.pointsPlayers.join(', ')}\n`;
+      }
+    }
+
     const prompt = `You are a sharp sports betting analyst covering Australian and international markets. Analyse this match and return ONLY a JSON object — no markdown, no explanation outside the JSON.
 
 MATCH: ${home} vs ${away}
 SPORT: ${sport}
 ODDS: ${oddsLine}
-${sportCtx ? `\n${sportCtx}\n` : ''}
+${sportCtx ? `\n${sportCtx}\n` : ''}${playerSection}
 Draw on your knowledge of these teams/competitions to produce SPECIFIC, REALISTIC analysis. Use real team form, real head-to-head history, real venue stats, real injury context, real betting patterns. Be specific — use actual numbers, scorelines, and player names where you know them.
 
 Return this exact JSON structure with ALL fields filled in:
@@ -709,6 +721,16 @@ Return this exact JSON structure with ALL fields filled in:
     "mov": <UFC/Boxing only: e.g. "${home} by KO/TKO" or "${away} by Decision" or "${away} by Submission" — the most likely finish, null for other sports>,
     "dist": <UFC/Boxing only: "yes" or "no" — does the fight go the full distance, null for other sports>,
     "distReason": "<UFC/Boxing only: 10-15 words why it does/doesn't go the distance, null for other sports>"
+  },
+  "playerPicks": {
+    "firstGoal": <AFL only if FIRST GOAL OPTIONS provided: exact player name from the list most likely to kick the first goal, null otherwise>,
+    "anyGoal": <AFL only if FIRST GOAL OPTIONS provided: exact player name from the list most likely to kick 2+ goals (can differ from firstGoal), null otherwise>,
+    "dis20": <AFL only if DISPOSALS OPTIONS provided: exact player name from the list most likely to record 20+ disposals, null otherwise>,
+    "dis25": <AFL only if DISPOSALS OPTIONS provided: exact player name from the list most likely to record 25+ disposals (can differ from dis20), null otherwise>,
+    "firstTry": <NRL only if TRY SCORER OPTIONS provided: exact player name from the list most likely to score the first try, null otherwise>,
+    "anyTry": <NRL only if TRY SCORER OPTIONS provided: exact player name most likely to score anytime (can differ from firstTry), null otherwise>,
+    "pts20": <NBA only if PLAYER POINTS OPTIONS provided: exact player name from the list most likely to score 20+ points, null otherwise>,
+    "pts30": <NBA only if PLAYER POINTS OPTIONS provided: exact player name from the list most likely to score 30+ points (can differ from pts20), null otherwise>
   }
 }`;
 
@@ -1015,11 +1037,11 @@ app.get('/api/odds/usage', (req, res) => {
 
 // ── AI ANALYSE ──
 app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
-  const { event } = req.body;
+  const { event, playerMarkets } = req.body;
   if (!event?.id) return res.status(400).json({ success: false, error: 'Event data required' });
   try {
     if (isFresh(aiCache, event.id, AI_TTL)) return res.json({ success: true, analysis: aiCache[event.id].data });
-    const analysis = await analyseMatch(event);
+    const analysis = await analyseMatch(event, playerMarkets || null);
     if (!analysis) return res.status(503).json({ success: false, error: 'AI unavailable' });
     if (analysis._error) return res.status(402).json({ success: false, errorType: analysis._error, error: analysis.message });
     res.json({ success: true, analysis });

@@ -2622,10 +2622,23 @@ async function requestAIAnalysis(m) {
   if (!token) return;
   startFactCycler();
   try {
+    const extraMkts = generateExtraMarkets(m);
+    let playerMarkets = null;
+    if (m.sport === 'AFL') {
+      const fg = extraMkts.find(x => x.id === 'firstgoal');
+      const d20 = extraMkts.find(x => x.id === '20dis');
+      playerMarkets = { firstGoal: fg?.outcomes.map(o => o.label) || [], disposals: d20?.outcomes.map(o => o.label) || [] };
+    } else if (m.sport === 'NRL') {
+      const ft = extraMkts.find(x => x.id === 'firsttry');
+      playerMarkets = { tryscorers: ft?.outcomes.map(o => o.label) || [] };
+    } else if (m.sport === 'NBA') {
+      const p20 = extraMkts.find(x => x.id === 'pts20');
+      playerMarkets = { pointsPlayers: p20?.outcomes.map(o => o.label) || [] };
+    }
     const res = await fetch('/api/analyse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-session-token': token },
-      body: JSON.stringify({ event: { id: m.id, home: m.home, away: m.away, sport: m.sport, homeOdds: m.homeOdds, awayOdds: m.awayOdds, drawOdds: m.drawOdds } })
+      body: JSON.stringify({ event: { id: m.id, home: m.home, away: m.away, sport: m.sport, homeOdds: m.homeOdds, awayOdds: m.awayOdds, drawOdds: m.drawOdds }, playerMarkets })
     });
     const data = await res.json();
     if (data.success && data.analysis) {
@@ -2644,6 +2657,7 @@ async function requestAIAnalysis(m) {
         UPCOMING[idx].bettingAngle = data.analysis.bettingAngle || '';
         UPCOMING[idx].valueBet = data.analysis.valueBet != null ? data.analysis.valueBet : UPCOMING[idx].valueBet;
         UPCOMING[idx].props = data.analysis.props || null;
+        UPCOMING[idx].playerPicks = data.analysis.playerPicks || null;
         UPCOMING[idx].pick = data.analysis.recommendation || UPCOMING[idx].pick;
       }
       stopFactCycler();
@@ -2877,16 +2891,29 @@ function generateExtraMarkets(m) {
 // Returns a small AI pick badge HTML for a given market, or '' if no pick available
 function getMarketAIPick(m, marketId) {
   const p = m.props;
-  if (!p || !m.aiReady) return { badge: '', reason: '' };
+  const pp = m.playerPicks;
+  if (!m.aiReady) return { badge: '', reason: '', pick: null };
   const badge = (label) => `<span style="font-size:9px;background:rgba(139,92,246,.18);color:#a78bfa;border:1px solid rgba(139,92,246,.35);border-radius:4px;padding:2px 6px;font-weight:700;letter-spacing:.5px;margin-left:6px">🤖 ${label}</span>`;
-  if (marketId === 'ou' && p.ou) return { badge: badge(p.ou.toUpperCase()), reason: p.ouReason || '' };
-  if (marketId === 'ou25' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 2.5' : 'UNDER 2.5'), reason: p.ouReason || '' };
-  if (marketId === 'ou35' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 3.5' : 'UNDER 3.5'), reason: '' };
-  if (marketId === 'margin' && p.margin) return { badge: badge(p.margin.toUpperCase()), reason: '' };
-  if (marketId === 'btts' && p.btts) return { badge: badge('BTTS: ' + p.btts.toUpperCase()), reason: '' };
-  if (marketId === 'mov' && p.mov) return { badge: badge(p.mov), reason: '' };
-  if (marketId === 'dist' && p.dist) return { badge: badge(p.dist === 'yes' ? 'GOES DISTANCE' : 'EARLY FINISH'), reason: p.distReason || '' };
-  return { badge: '', reason: '' };
+  if (p) {
+    if (marketId === 'ou' && p.ou) return { badge: badge(p.ou.toUpperCase()), reason: p.ouReason || '', pick: null };
+    if (marketId === 'ou25' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 2.5' : 'UNDER 2.5'), reason: p.ouReason || '', pick: null };
+    if (marketId === 'ou35' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 3.5' : 'UNDER 3.5'), reason: '', pick: null };
+    if (marketId === 'margin' && p.margin) return { badge: badge(p.margin.toUpperCase()), reason: '', pick: null };
+    if (marketId === 'btts' && p.btts) return { badge: badge('BTTS: ' + p.btts.toUpperCase()), reason: '', pick: null };
+    if (marketId === 'mov' && p.mov) return { badge: badge(p.mov), reason: '', pick: null };
+    if (marketId === 'dist' && p.dist) return { badge: badge(p.dist === 'yes' ? 'GOES DISTANCE' : 'EARLY FINISH'), reason: p.distReason || '', pick: null };
+  }
+  if (pp) {
+    if (marketId === 'firstgoal' && pp.firstGoal) return { badge: badge(pp.firstGoal), reason: 'AI pick: most likely first goal scorer', pick: pp.firstGoal };
+    if (marketId === '2goals' && pp.anyGoal) return { badge: badge(pp.anyGoal), reason: 'AI pick: most likely to kick 2+ goals', pick: pp.anyGoal };
+    if (marketId === '20dis' && pp.dis20) return { badge: badge(pp.dis20), reason: 'AI pick: most likely 20+ disposals', pick: pp.dis20 };
+    if (marketId === '25dis' && pp.dis25) return { badge: badge(pp.dis25), reason: 'AI pick: most likely 25+ disposals', pick: pp.dis25 };
+    if (marketId === 'firsttry' && pp.firstTry) return { badge: badge(pp.firstTry), reason: 'AI pick: most likely first try scorer', pick: pp.firstTry };
+    if (marketId === 'anytry' && pp.anyTry) return { badge: badge(pp.anyTry), reason: 'AI pick: most likely anytime try scorer', pick: pp.anyTry };
+    if (marketId === 'pts20' && pp.pts20) return { badge: badge(pp.pts20), reason: 'AI pick: most likely to score 20+ points', pick: pp.pts20 };
+    if (marketId === 'pts30' && pp.pts30) return { badge: badge(pp.pts30), reason: 'AI pick: most likely to score 30+ points', pick: pp.pts30 };
+  }
+  return { badge: '', reason: '', pick: null };
 }
 
 function renderExtraMarkets(m) {
@@ -2913,7 +2940,8 @@ function renderExtraMarkets(m) {
                   (mkt.id==='margin' && m.props?.margin && o.label.replace(/\u2013/g,'-') === m.props.margin.replace(/\u2013/g,'-')) ||
                   (mkt.id==='btts' && o.label.toLowerCase() === (m.props?.btts||'__')) ||
                   (mkt.id==='mov' && o.label === m.props?.mov) ||
-                  (mkt.id==='dist' && ((m.props?.dist==='yes'&&o.label==='Yes')||(m.props?.dist==='no'&&o.label==='No')))
+                  (mkt.id==='dist' && ((m.props?.dist==='yes'&&o.label==='Yes')||(m.props?.dist==='no'&&o.label==='No'))) ||
+                  (ai.pick && o.label === ai.pick)
                 );
                 return `
                 <button class="em-outcome${isAIPick ? ' em-ai-pick' : ''}" onclick="openMarketBet('${m.id}','${(o.label||'').replace(/'/g,'\\\'')}',${_emFl(o.odds)})" data-testid="em-outcome-${mkt.id}">
