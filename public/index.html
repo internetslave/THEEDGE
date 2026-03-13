@@ -2668,7 +2668,9 @@ async function requestAIAnalysis(m) {
       stopFactCycler();
       const el = document.getElementById('md-ai-loading');
       if (el) {
-        if (data?.errorType === 'credits') {
+        if (res.status === 401) {
+          el.innerHTML = '🔒 Session expired — please <a href="#" onclick="closeMatchModal();openProfileModal();return false" style="color:var(--accent);text-decoration:underline">sign in again</a>';
+        } else if (data?.errorType === 'credits') {
           el.innerHTML = '💳 AI credits exhausted — add credits at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);text-decoration:underline">console.anthropic.com</a> then reload';
         } else {
           el.textContent = '🤖 AI analysis unavailable — try again later';

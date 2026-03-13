@@ -158,27 +158,37 @@ const initBins = loadStore;
 // ═══════════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════════
-const sessions    = {};
-const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
+const SESSION_TTL    = 30 * 24 * 60 * 60 * 1000;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'edgeiq-fallback-secret-change-me';
 const AVATARS = ['🎯','🔥','⚡','💰','🏆','🦊','🐆','🌟','🎲','🃏'];
 const COLORS  = ['#f0b429','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f97316','#e8314a','#00c85a','#f59e0b'];
 
 function hashPin(pin, salt) { return crypto.pbkdf2Sync(pin, salt, 10000, 32, 'sha256').toString('hex'); }
 function genSalt()          { return crypto.randomBytes(16).toString('hex'); }
-function genToken()         { return crypto.randomBytes(32).toString('hex'); }
 function isFresh(cache, key, ttl) { return cache[key] && (Date.now() - cache[key].ts < ttl); }
 
+// Signed stateless sessions — survive server restarts, no in-memory store needed
 function createSession(username) {
-  const token = genToken();
-  sessions[token] = { username, expires: Date.now() + SESSION_TTL };
-  return token;
+  const expires = Date.now() + SESSION_TTL;
+  const payload = `${username}:${expires}`;
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+  return `${Buffer.from(payload).toString('base64url')}.${sig}`;
 }
 function getSession(token) {
-  if (!token) return null;
-  const s = sessions[token];
-  if (!s) return null;
-  if (Date.now() > s.expires) { delete sessions[token]; return null; }
-  return s.username;
+  if (!token || typeof token !== 'string') return null;
+  const dot = token.lastIndexOf('.');
+  if (dot === -1) return null;
+  const b64 = token.slice(0, dot), sig = token.slice(dot + 1);
+  try {
+    const payload = Buffer.from(b64, 'base64url').toString('utf8');
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+    if (sig !== expected) return null;
+    const colon = payload.lastIndexOf(':');
+    const username = payload.slice(0, colon);
+    const expires  = parseInt(payload.slice(colon + 1), 10);
+    if (!username || isNaN(expires) || Date.now() > expires) return null;
+    return username;
+  } catch { return null; }
 }
 function authMiddleware(req, res, next) {
   // Only accept token from header — never from URL params (prevents logging in proxies/access logs)
@@ -910,7 +920,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/auth/signout', authMiddleware, (req, res) => {
-  delete sessions[req.headers['x-session-token']];
+  // Stateless tokens — client clears localStorage; nothing to delete server-side
   res.json({ success: true });
 });
 
