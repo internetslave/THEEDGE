@@ -40,7 +40,7 @@ function httpsReq(options, body = null) {
 }
 
 // In-memory store — loaded from JSONBin on startup, written back on every change
-let store = { users: {}, bets: {}, tipping: { rounds: {}, results: {}, activeRound: null }, comps: { comps: {}, memberships: {} }, aiCache: {} };
+let store = { users: {}, bets: {}, tipping: { rounds: {}, results: {}, activeRound: null }, comps: { comps: {}, memberships: {} }, aiCache: {}, oddsCache: {} };
 let storeLoaded = false;
 
 async function loadStore() {
@@ -64,15 +64,54 @@ async function loadStore() {
       store.bets    = data.bets    || {};
       store.tipping = data.tipping || { rounds: {}, results: {}, activeRound: null };
       store.comps   = data.comps   || { comps: {}, memberships: {} };
-      store.aiCache = data.aiCache || {};
-      // Restore warm AI entries from persisted store (skip stale ones)
+      store.aiCache    = data.aiCache    || {};
+      store.oddsCache  = data.oddsCache  || {};
       const now = Date.now();
-      let restored = 0;
+      // Restore warm AI entries
+      let aiRestored = 0;
       for (const [id, entry] of Object.entries(store.aiCache)) {
-        if (entry?.ts && now - entry.ts < AI_TTL) { aiCache[id] = entry; restored++; }
-        else delete store.aiCache[id]; // prune stale entries
+        if (entry?.ts && now - entry.ts < AI_TTL) { aiCache[id] = entry; aiRestored++; }
+        else delete store.aiCache[id];
       }
-      console.log(`✅ Store loaded — ${Object.keys(store.users).length} users | AI cache: ${restored} warm entries`);
+      // Restore warm odds entries (each sport stored separately)
+      let oddsRestored = 0;
+      let combinedData = {};
+      let oldestOddsTs = Infinity;
+      const storedOddsKeys = Object.keys(store.oddsCache || {});
+      console.log(`[Odds restore] persisted sports: [${storedOddsKeys.join(', ')}]`);
+      for (const [sport, entry] of Object.entries(store.oddsCache)) {
+        const ageMin = entry?.ts ? Math.round((now - entry.ts) / 60000) : null;
+        if (entry?.ts && now - entry.ts < ODDS_TTL) {
+          // Slim the data if stored in old full-bookmaker format (saves JSONBin space on next write)
+          const slimData = (entry.data || []).map(ev => ({
+            id: ev.id, home_team: ev.home_team, away_team: ev.away_team,
+            commence_time: ev.commence_time,
+            bookmakers: ev.bookmakers?.slice(0, 1).map(bk => ({
+              markets: bk.markets?.filter(m => m.key === 'h2h').map(m => ({
+                key: m.key, outcomes: m.outcomes.map(o => ({ name: o.name, price: o.price }))
+              })) || []
+            })) || []
+          }));
+          const slimEntry = { data: slimData, ts: entry.ts };
+          oddsCache[sport] = slimEntry;
+          store.oddsCache[sport] = slimEntry; // replace old format with slim in store
+          combinedData[ALL_SPORTS.find(s=>s.key===sport)?.label || sport] = slimData;
+          if (entry.ts < oldestOddsTs) oldestOddsTs = entry.ts;
+          oddsRestored++;
+          console.log(`  ✓ ${sport} (${ageMin}min old, ${slimData.length} events)`);
+        } else {
+          console.log(`  ✗ ${sport} (${ageMin}min old — stale, pruned)`);
+          delete store.oddsCache[sport]; // prune stale
+        }
+      }
+      if (oddsRestored === ALL_SPORTS.length) {
+        combinedOddsCache = { data: combinedData, ts: oldestOddsTs };
+        console.log(`✅ Store loaded — ${Object.keys(store.users).length} users | AI cache: ${aiRestored} warm | Odds: restored (${oddsRestored}/${ALL_SPORTS.length} sports, saved 7 credits)`);
+        // Write slim version back to JSONBin immediately to replace any fat old-format entries
+        saveStore().catch(e => console.error('[loadStore] re-slim save error:', e.message));
+      } else {
+        console.log(`✅ Store loaded — ${Object.keys(store.users).length} users | AI cache: ${aiRestored} warm | Odds: ${oddsRestored}/${ALL_SPORTS.length} sports cached (stale, will re-fetch)`);
+      }
     } else {
       console.error('[loadStore] bad status:', r.status, r.body.substring(0,100));
     }
@@ -84,16 +123,20 @@ async function saveStore() {
   if (!JSONBIN_KEY || !JSONBIN_BIN_ID) return;
   try {
     const body = JSON.stringify(store);
-    await httpsReq({
+    const bodyBytes = Buffer.byteLength(body);
+    const r = await httpsReq({
       hostname: 'api.jsonbin.io',
       path: `/v3/b/${JSONBIN_BIN_ID}`,
       method: 'PUT',
       headers: {
         'X-Master-Key': JSONBIN_KEY,
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
+        'Content-Length': bodyBytes
       }
     }, body);
+    if (r.status !== 200) {
+      console.error(`[saveStore] JSONBin error status=${r.status} size=${bodyBytes}bytes body=${r.body.substring(0, 200)}`);
+    }
   } catch(e) { console.error('saveStore error:', e.message); }
 }
 
@@ -209,8 +252,24 @@ async function fetchOdds(sport, regions = 'au') {
     console.log(`[Odds API] credits used=${used} remaining=${remaining} sport=${sport}`);
   }
   const data = await r.json();
-  oddsCache[sport] = { data, ts: Date.now() };
-  return data;
+  // Slim the data for storage — keep only what the /api/odds route needs (1st bookmaker h2h).
+  // Full raw data with all bookmakers is ~22KB per sport; slimmed is ~2KB — saves JSONBin space.
+  const slimData = data.map(ev => ({
+    id: ev.id,
+    home_team: ev.home_team,
+    away_team: ev.away_team,
+    commence_time: ev.commence_time,
+    bookmakers: ev.bookmakers?.slice(0, 1).map(bk => ({
+      markets: bk.markets?.filter(m => m.key === 'h2h').map(m => ({
+        key: m.key,
+        outcomes: m.outcomes.map(o => ({ name: o.name, price: o.price }))
+      })) || []
+    })) || []
+  }));
+  const entry = { data: slimData, ts: Date.now() };
+  oddsCache[sport] = entry;
+  store.oddsCache[sport] = entry; // stage in store; saved once all sports finish in fetchAllOdds
+  return slimData;
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -226,6 +285,12 @@ async function fetchAllOdds() {
     catch (e) { console.error(`Odds fetch failed [${s.key}]:`, e.message); results[s.label] = oddsCache[s.key]?.data || []; }
   }
   combinedOddsCache = { data: results, ts: Date.now() };
+  // Persist all sport caches to JSONBin once — so restarts skip re-fetching (saves 7 credits)
+  const savedSports = Object.keys(store.oddsCache);
+  if (savedSports.length > 0) {
+    console.log(`[Odds] persisting ${savedSports.length} sports to store: [${savedSports.join(', ')}]`);
+    saveStore().catch(e => console.error('[Odds] store save error:', e.message));
+  }
   return results;
 }
 

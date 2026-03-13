@@ -25,7 +25,7 @@ A sports betting intelligence dashboard at edgebets.net that fetches live odds f
 AFL, NRL, NBA, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Racing
 
 ## Key Features
-- Live odds with 6-hour cache + combined cache layer (credit-efficient)
+- Live odds with 6-hour cache — **persisted to JSONBin so server restarts use 0 credits** (slimmed to ~60KB per save)
 - Per-sport regional bookmaker config: AU for local sports, AU+US for NBA/UFC/Boxing, AU+UK for EPL
 - Real horse racing data via The Racing API (theracingapi.com) with 15-min cache
   - Fetches AU meets for today+tomorrow, real runners with jockey/trainer/form/odds
