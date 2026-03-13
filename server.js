@@ -669,12 +669,12 @@ async function analyseMatch(ev, playerMarkets = null) {
     console.log(`[AI] dedup — awaiting in-flight analysis for ${ev.home} vs ${ev.away}`);
     return aiInflight[ev.id];
   }
-  const promise = _doAnalyseMatch(ev).finally(() => { delete aiInflight[ev.id]; });
+  const promise = _doAnalyseMatch(ev, playerMarkets).finally(() => { delete aiInflight[ev.id]; });
   aiInflight[ev.id] = promise;
   return promise;
 }
 
-async function _doAnalyseMatch(ev) {
+async function _doAnalyseMatch(ev, playerMarkets = null) {
   try {
     const home = ev.home, away = ev.away, sport = ev.sport;
     const oddsLine = `${home} @ ${ev.homeOdds}, ${away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ''}`;
