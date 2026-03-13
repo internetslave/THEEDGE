@@ -860,11 +860,20 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
       </div>
       <div id="home-matches"></div>
 
+      <!-- Pending bets awaiting results -->
+      <div id="home-pending-bets-wrap" style="display:none">
+        <div class="section-header" style="margin-top:24px">
+          <div class="section-title">⏳ PENDING RESULTS</div>
+          <button class="section-action" onclick="showPage('mybets')">All bets →</button>
+        </div>
+        <div id="home-pending-bets"></div>
+      </div>
+
       <div class="section-header" style="margin-top:24px">
         <div class="section-title">RECENT BETS</div>
         <button class="section-action" onclick="showPage('mybets')">View all →</button>
       </div>
-      <div class="card">
+      <div class="card" style="overflow-x:auto">
         <div id="home-recent-bets"></div>
       </div>
     </div>
@@ -907,12 +916,22 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 <div id="page-mybets" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
     <div class="section-title">📋 MY BET TRACKER</div>
-    <div style="display:flex;gap:8px">
-      <button data-testid="button-share-stats" onclick="shareMyStats()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📤 SHARE STATS</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button data-testid="button-share-stats" onclick="shareMyStats()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📤 SHARE</button>
+      <button onclick="exportBetsCSV()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">⬇ CSV</button>
       <button class="btn-primary" onclick="openBetForm()">+ LOG BET</button>
     </div>
   </div>
   <div class="grid-4" id="mybets-stats" style="margin-bottom:20px"></div>
+  <!-- P&L Chart -->
+  <div id="pnl-chart-wrap" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">
+    <div style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:10px">CUMULATIVE P&L</div>
+    <canvas id="pnl-chart" height="60" style="width:100%;display:block"></canvas>
+  </div>
+  <!-- Search -->
+  <div style="margin-bottom:12px">
+    <input id="bets-search" type="text" placeholder="🔍  Search bets by event, team, notes…" oninput="onBetsSearch()" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 16px;font-size:13px;outline:none;font-family:var(--mono);transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+  </div>
   <div class="filter-tabs" id="mybets-filters">
     <button class="filter-tab active" onclick="filterBets('ALL',this)">All</button>
     <button class="filter-tab" onclick="filterBets('AFL',this)">AFL</button>
@@ -1758,8 +1777,8 @@ function renderQuickStart() {
 
   // Best pick = highest-confidence value bet, or just top confidence if none
   const pool = UPCOMING.filter(m => matchesSportFilter(m.sport, currentSport));
-  const valuePicks = pool.filter(m => m.valueBet).sort((a,b) => b.confidence - a.confidence);
-  const topPicks   = pool.sort((a,b) => b.confidence - a.confidence);
+  const valuePicks = [...pool].filter(m => m.valueBet).sort((a,b) => b.confidence - a.confidence);
+  const topPicks   = [...pool].sort((a,b) => b.confidence - a.confidence);
   const m = valuePicks[0] || topPicks[0];
   if (!m) { el.innerHTML = ''; return; }
 
@@ -1853,6 +1872,9 @@ function renderHome() {
 
   // AI Picks panel
   renderAIPicks();
+
+  // Pending bets panel
+  renderHomePending();
 }
 
 function matchCard(m) {
@@ -1939,12 +1961,15 @@ function renderAIPicks() {
 }
 
 function aiReasoning(m) {
+  if (m.keyFactor && m.keyFactor.length > 10) return m.keyFactor;
+  if (m.reasoning && m.reasoning.length > 10) return m.reasoning;
   const reasons = {
     'AFL': `${m.pick} showing strong recent form. Home ground advantage at ${m.venue}. Line movement suggests sharp money.`,
     'NRL': `${m.pick} has won 4 of last 5. Opposition missing key players. Expect high scoring.`,
     'Soccer': `${m.pick} best value at current odds. Expected goals model shows +0.4 edge.`,
     'UFC': `${m.pick} superior striking accuracy (${m.confidence}% TD defence). Reach advantage significant.`,
     'Boxing': `${m.pick} better footwork and jab output. Judge tendencies favour aggressive style.`,
+    'NBA': `${m.pick} lead the league in net rating this month. Pace and efficiency edge over opponent.`,
     'Greyhound': `Box draw advantageous. Recent times 0.3s faster than field average.`,
     'Horse Racing': `Strong wet track record. Trainer strike rate 28% at this distance.`,
   };
@@ -2137,18 +2162,23 @@ function renderUpcomingTable(matches) {
 function renderMyBets() {
   const s = getStats(bets);
   const pos = s.profit>=0;
+  const streak = calcStreak(bets);
 
   document.getElementById('mybets-stats').innerHTML = [
     {label:'Net P&L',  value:fmtPnl(s.profit), color:pos?'#10b981':'#ef4444', sub:fmt$(s.tr)+' returned'},
     {label:'Win Rate', value:s.winRate+'%',      color:'#3b82f6', sub:s.wins.length+'W / '+s.settled.length+' settled'},
-    {label:'ROI',      value:s.roi+'%',          color:parseFloat(s.roi)>=0?'#10b981':'#ef4444', sub:'Return on staked'},
-    {label:'Avg Odds', value:s.avgOdds+'x',      color:'#f59e0b', sub:'Mean dividend'},
+    {label:'ROI',      value:s.roi+'%',          color:parseFloat(s.roi)>=0?'#10b981':'#ef4444', sub:'Return on investment'},
+    {label:streak.count>1?`${streak.count}-${streak.type==='WIN'?'WIN':'LOSS'} STREAK`:'Avg Odds',
+     value:streak.count>1?(streak.type==='WIN'?'🔥':'❄️')+streak.count:s.avgOdds+'x',
+     color:streak.count>1?(streak.type==='WIN'?'#10b981':'#ef4444'):'#f59e0b',
+     sub:streak.count>1?`Current ${streak.type.toLowerCase()} streak`:'Mean dividend'},
   ].map(c=>`<div class="stat-card" style="border-left:3px solid ${c.color}">
     <div class="stat-label">${c.label}</div>
     <div class="stat-value" style="color:${c.color}">${c.value}</div>
     <div class="stat-change">${c.sub}</div>
   </div>`).join('');
 
+  drawPnlChart(bets);
   filterBets(currentBetFilter, null);
 }
 
@@ -2191,6 +2221,15 @@ function filterBets(sport, btn) {
     btn.classList.add('active');
   }
   let out = sport==='ALL' ? [...bets] : bets.filter(b=>b.sport===sport);
+  if (betSearchQuery) {
+    out = out.filter(b => {
+      const q = betSearchQuery;
+      return (b.event||'').toLowerCase().includes(q) ||
+             (b.bet||'').toLowerCase().includes(q) ||
+             (b.notes||'').toLowerCase().includes(q) ||
+             (b.sport||'').toLowerCase().includes(q);
+    });
+  }
   out = out.reverse();
   document.getElementById('bets-count').textContent = out.length+' bets';
 
@@ -2205,7 +2244,7 @@ function filterBets(sport, btn) {
           <td style="color:var(--muted);font-size:12px;white-space:nowrap">${b.bet}</td>
           <td style="font-family:var(--mono);font-weight:700">$${b.stake}</td>
           <td style="font-family:var(--mono);font-weight:700;color:#f59e0b">${b.odds}x</td>
-          <td>${resultTag(b.result)}</td>
+          <td>${b.result==='PENDING'?`<div style="display:flex;gap:3px;align-items:center">${resultTag(b.result)}<button onclick="quickUpdateResult(${b.id},'WIN')" title="Mark WIN" style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">W</button><button onclick="quickUpdateResult(${b.id},'LOSS')" title="Mark LOSS" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer">L</button></div>`:resultTag(b.result)}</td>
           <td style="font-family:var(--mono);font-weight:700;color:${pnl>=0?'#10b981':'#ef4444'}">${fmtPnl(pnl)}</td>
           <td>${b.confidence?`<div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:60px"><div class="prog-fill" style="width:${b.confidence}%;background:${confColor(b.confidence)}"></div></div><span style="font-size:11px;font-family:var(--mono);color:${confColor(b.confidence)}">${b.confidence}%</span></div>`:'—'}</td>
           <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.notes||''}">${b.notes||'—'}</td>
@@ -2234,7 +2273,12 @@ function filterBets(sport, btn) {
             ${resultTag(b.result)}
             <span class="bet-card-pnl" style="color:${pnlColor}">${fmtPnl(pnl)}</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:10px">
+          ${b.result==='PENDING' ? `<div style="display:flex;gap:5px;margin-top:8px">
+            <button onclick="quickUpdateResult(${b.id},'WIN')" style="flex:1;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✓ WIN</button>
+            <button onclick="quickUpdateResult(${b.id},'PLACE')" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">PLACE</button>
+            <button onclick="quickUpdateResult(${b.id},'LOSS')" style="flex:1;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--mono)">✗ LOSS</button>
+          </div>` : ''}
+          <div style="display:flex;gap:6px;margin-top:8px">
             <button class="action-btn" onclick="openEdit(${b.id})" style="flex:1;padding:8px">✏️ Edit</button>
             <button class="action-btn del" onclick="confirmDelete(${b.id})" style="padding:8px 12px">🗑️</button>
           </div>
@@ -2358,9 +2402,11 @@ function openBetForm() {
   ['event','bet','stake','odds','venue','comp','conf','pos','notes'].forEach(id=>{
     const el=document.getElementById('f-'+id); if(el) el.value='';
   });
-  ['result','bettype','bookie','weather'].forEach(id=>{
+  ['bettype','bookie','weather'].forEach(id=>{
     const el=document.getElementById('f-'+id); if(el) el.selectedIndex=0;
   });
+  const resultEl = document.getElementById('f-result');
+  if(resultEl) resultEl.value = 'PENDING';
   document.getElementById('f-value').checked=false;
   document.getElementById('f-ai').checked=false;
   // Pre-fill sport from user profile
@@ -2384,7 +2430,7 @@ function openBetFormWithMatch(matchId) {
     document.getElementById('f-bet').value   = m.pick;
     document.getElementById('f-ai').checked  = true;
     const sportEl = document.getElementById('f-sport');
-    const sportMap = {'AFL':'AFL','NRL':'NRL','Soccer':'Soccer','UFC':'UFC','Boxing':'Boxing','Greyhound':'Greyhound','Horse Racing':'Horse Racing'};
+    const sportMap = {'AFL':'AFL','NRL':'NRL','NBA':'NBA','Soccer':'Soccer','UFC':'UFC','Boxing':'Boxing','Greyhound':'Greyhound','Horse Racing':'Horse Racing'};
     if(sportMap[m.sport]) sportEl.value = sportMap[m.sport];
     const oddsVal = m.pick===m.home ? m.homeOdds : m.awayOdds;
     if(oddsVal) document.getElementById('f-odds').value = oddsVal;
@@ -3656,6 +3702,134 @@ function openFullBetForm() {
   closeQuickBet();
   if (quickBetMatch) openBetFormWithMatch(quickBetMatch.id);
   else openBetForm();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function exportBetsCSV() {
+  if (!bets.length) { showToast('⚠️ No bets to export', false); return; }
+  const headers = ['Date','Sport','Event','Bet','Stake','Odds','Result','BetType','Bookmaker','Venue','Competition','Confidence%','PnL','ValueBet','AIRecommended','Notes'];
+  const rows = bets.map(b => {
+    const pnl = calcPnl(b).toFixed(2);
+    return [
+      b.date, b.sport, `"${(b.event||'').replace(/"/g,'""')}"`, `"${(b.bet||'').replace(/"/g,'""')}"`,
+      b.stake, b.odds, b.result, b.betType||'', b.bookmaker||'',
+      `"${(b.venue||'').replace(/"/g,'""')}"`, `"${(b.comp||'').replace(/"/g,'""')}"`,
+      b.confidence||0, pnl, b.valueBet?'Yes':'No', b.aiRecommended?'Yes':'No',
+      `"${(b.notes||'').replace(/"/g,'""')}"`
+    ].join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `edgeiq-bets-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('✅ Bets exported as CSV');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CUMULATIVE P&L CHART
+// ═══════════════════════════════════════════════════════════════════
+function drawPnlChart(betList) {
+  const wrap = document.getElementById('pnl-chart-wrap');
+  const canvas = document.getElementById('pnl-chart');
+  if (!canvas || !betList.length) { if(wrap) wrap.style.display='none'; return; }
+  const settled = [...betList].sort((a,b)=>new Date(a.date)-new Date(b.date)).filter(b=>b.result!=='PENDING');
+  if (settled.length < 2) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 600; const H = 60;
+  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  let cum = 0;
+  const points = settled.map(b => { cum += calcPnl(b); return cum; });
+  const min = Math.min(0, ...points), max = Math.max(0, ...points);
+  const range = max - min || 1;
+  const toY = v => H - 4 - ((v - min) / range) * (H - 8);
+  const toX = i => (i / (points.length - 1)) * W;
+  const zero = toY(0);
+  ctx.clearRect(0,0,W,H);
+  // Fill under/over zero
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  for (let i=1;i<points.length;i++) ctx.lineTo(toX(i), toY(points[i]));
+  ctx.lineTo(toX(points.length-1), zero);
+  ctx.lineTo(toX(0), zero);
+  ctx.closePath();
+  const finalProfit = points[points.length-1];
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  if (finalProfit >= 0) {
+    grad.addColorStop(0,'rgba(16,185,129,.3)'); grad.addColorStop(1,'rgba(16,185,129,.02)');
+  } else {
+    grad.addColorStop(0,'rgba(239,68,68,.02)'); grad.addColorStop(1,'rgba(239,68,68,.3)');
+  }
+  ctx.fillStyle = grad; ctx.fill();
+  // Zero line
+  ctx.beginPath(); ctx.moveTo(0,zero); ctx.lineTo(W,zero);
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  for (let i=1;i<points.length;i++) ctx.lineTo(toX(i), toY(points[i]));
+  ctx.strokeStyle = finalProfit>=0 ? '#10b981' : '#ef4444';
+  ctx.lineWidth=2; ctx.stroke();
+  // End dot
+  ctx.beginPath(); ctx.arc(toX(points.length-1), toY(finalProfit), 4, 0, Math.PI*2);
+  ctx.fillStyle = finalProfit>=0?'#10b981':'#ef4444'; ctx.fill();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SEARCH IN MY BETS
+// ═══════════════════════════════════════════════════════════════════
+let betSearchQuery = '';
+function onBetsSearch() {
+  betSearchQuery = (document.getElementById('bets-search')?.value || '').toLowerCase();
+  filterBets(currentBetFilter, null);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// QUICK RESULT UPDATE
+// ═══════════════════════════════════════════════════════════════════
+function quickUpdateResult(betId, result) {
+  const idx = bets.findIndex(b=>b.id===betId);
+  if (idx === -1) return;
+  bets[idx] = { ...bets[idx], result };
+  saveBets();
+  renderMyBets();
+  renderHome();
+  showToast(`✅ Marked as ${result}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PENDING BETS PANEL (Home page)
+// ═══════════════════════════════════════════════════════════════════
+function renderHomePending() {
+  const wrap = document.getElementById('home-pending-bets-wrap');
+  const el = document.getElementById('home-pending-bets');
+  if (!wrap || !el) return;
+  const pending = bets.filter(b => b.result === 'PENDING').slice(-5).reverse();
+  if (!pending.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  el.innerHTML = pending.map(b => {
+    const sc = SPORT_COLOR[b.sport] || '#aaa';
+    const oddsVal = parseFloat(b.odds);
+    const potentialReturn = b.stake * oddsVal;
+    return `<div style="background:var(--bg2);border:1px solid rgba(245,158,11,.2);border-left:3px solid #f59e0b;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${sportTag(b.sport)}<span style="font-size:11px;color:var(--muted)">${b.date}</span></div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">${b.event}</div>
+        <div style="font-size:12px;color:var(--muted)">${b.bet} · <span style="color:#f59e0b;font-family:var(--mono)">${b.odds}x</span> · <span style="color:var(--text2)">$${b.stake} stake</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Potential return: <span style="color:#10b981;font-family:var(--mono);font-weight:700">$${potentialReturn.toFixed(2)}</span></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="quickUpdateResult(${b.id},'WIN')" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:#10b981;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono)">✓ WIN</button>
+        <button onclick="quickUpdateResult(${b.id},'PLACE')" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono)">P</button>
+        <button onclick="quickUpdateResult(${b.id},'LOSS')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ef4444;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono)">✗ LOSS</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════

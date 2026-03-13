@@ -487,9 +487,12 @@ function generateRacingData(type) {
   return events.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 }
 
+let racingRateLimitedUntil = 0;
+
 async function getRacingEvents() {
   let horseEvents;
-  if (RACING_API_USER && RACING_API_PASS) {
+  const now = Date.now();
+  if (RACING_API_USER && RACING_API_PASS && now > racingRateLimitedUntil) {
     try {
       horseEvents = await fetchRealRacingData();
       if (!horseEvents.length) {
@@ -497,10 +500,18 @@ async function getRacingEvents() {
         horseEvents = generateRacingData('horse');
       }
     } catch (e) {
-      console.error('Racing API failed, using horse fallback:', e.message);
+      if (e.message && e.message.includes('429')) {
+        racingRateLimitedUntil = now + 30 * 60 * 1000;
+        console.warn('Racing API rate limited — suspending calls for 30 min');
+      } else {
+        console.error('Racing API failed, using horse fallback:', e.message);
+      }
       horseEvents = generateRacingData('horse');
     }
   } else {
+    if (now <= racingRateLimitedUntil) {
+      console.log('Racing API rate-limit cooldown active — using fallback');
+    }
     horseEvents = generateRacingData('horse');
   }
   const greyhoundEvents = generateRacingData('greyhound');
