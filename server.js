@@ -610,7 +610,7 @@ Return this exact JSON structure with ALL fields filled in:
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1100, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1600, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await r.json();
     if (data.error) {
@@ -621,12 +621,37 @@ Return this exact JSON structure with ALL fields filled in:
       }
       return null;
     }
+    // Check stop reason — if max_tokens was hit, JSON may be truncated
+    const stopReason = data.stop_reason;
+    if (stopReason === 'max_tokens') {
+      console.warn(`[AI] max_tokens hit for ${home} vs ${away} — attempting JSON recovery`);
+    }
     const raw = data.content?.[0]?.text || '';
-    // Extract JSON — handle both bare JSON and markdown-wrapped
+    // Extract JSON block — handle bare JSON and markdown-wrapped
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(raw.replace(/```json|```/g,'').trim());
+    let jsonStr = jsonMatch ? jsonMatch[0] : raw.replace(/```json|```/g, '').trim();
+    // If the JSON is truncated (stop_reason=max_tokens), attempt to close open structures
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonStr);
+    } catch {
+      // Try patching: close any open string, array, object in order
+      let patched = jsonStr.replace(/,\s*$/, ''); // strip trailing comma
+      // Close unclosed string value
+      if ((patched.match(/"/g) || []).length % 2 !== 0) patched += '"';
+      // Close unclosed array
+      const openArrays = (patched.match(/\[/g) || []).length - (patched.match(/\]/g) || []).length;
+      for (let i = 0; i < openArrays; i++) patched += ']';
+      // Close unclosed object
+      const openObjects = (patched.match(/\{/g) || []).length - (patched.match(/\}/g) || []).length;
+      for (let i = 0; i < openObjects; i++) patched += '}';
+      analysis = JSON.parse(patched);
+      console.warn(`[AI] recovered truncated JSON for ${home} vs ${away}`);
+    }
+    // Validate required fields exist
+    if (!analysis.recommendation || !analysis.confidence) throw new Error('Missing required AI fields');
     aiCache[ev.id] = { data: analysis, ts: Date.now() };
-    console.log(`[AI] analysed ${home} vs ${away} — conf:${analysis.confidence}% pick:${analysis.recommendation}`);
+    console.log(`[AI] analysed ${home} vs ${away} — conf:${analysis.confidence}% pick:${analysis.recommendation}${stopReason === 'max_tokens' ? ' (recovered)' : ''}`);
     return analysis;
   } catch (err) { console.error(`AI failed for ${ev.home} vs ${ev.away}:`, err.message); return null; }
 }
