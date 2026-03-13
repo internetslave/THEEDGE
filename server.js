@@ -669,6 +669,8 @@ async function _doAnalyseMatch(ev) {
     const home = ev.home, away = ev.away, sport = ev.sport;
     const oddsLine = `${home} @ ${ev.homeOdds}, ${away} @ ${ev.awayOdds}${ev.drawOdds ? `, Draw @ ${ev.drawOdds}` : ''}`;
     const recOptions = ev.drawOdds ? `"${home}", "${away}", or "Draw"` : `"${home}" or "${away}"`;
+    const favTeam = ev.homeOdds <= ev.awayOdds ? home : away;
+    const dogTeam = ev.homeOdds <= ev.awayOdds ? away : home;
     const sportCtx = getSportContext(sport);
 
     const prompt = `You are a sharp sports betting analyst covering Australian and international markets. Analyse this match and return ONLY a JSON object — no markdown, no explanation outside the JSON.
@@ -698,13 +700,22 @@ Return this exact JSON structure with ALL fields filled in:
     {"icon": "🏟️", "label": "Venue / Schedule", "value": "<Home court/ground advantage with specific record, and any back-to-back or travel fatigue>"},
     {"icon": "⚠️", "label": "Risk", "value": "<Main risk to the pick — injury, player availability, hot opponent form, or statistical anomaly>"}
   ],
-  "bettingAngle": "<One sharp betting insight referencing the specific odds above — e.g. line value, market inefficiency, or why the favourite/underdog price is correct or incorrect given specific stats.>"
+  "bettingAngle": "<One sharp betting insight referencing the specific odds above — e.g. line value, market inefficiency, or why the favourite/underdog price is correct or incorrect given specific stats.>",
+  "props": {
+    "ou": <AFL/NRL/NBA/Soccer only: "over" or "under" — your pick on the total points/goals market, null for UFC/Boxing>,
+    "ouReason": "<10-15 words max explaining the over/under pick — scoring pace, defensive stats, weather, etc. null for UFC/Boxing>",
+    "margin": <AFL only: your pick from exactly one of: "${favTeam} 1\u201339", "${favTeam} 40+", "${dogTeam} 1\u201339", "${dogTeam} 40+" — use the en-dash character, null for all other sports>,
+    "btts": <Soccer only: "yes" or "no" — both teams to score, null for all other sports>,
+    "mov": <UFC/Boxing only: e.g. "${home} by KO/TKO" or "${away} by Decision" or "${away} by Submission" — the most likely finish, null for other sports>,
+    "dist": <UFC/Boxing only: "yes" or "no" — does the fight go the full distance, null for other sports>,
+    "distReason": "<UFC/Boxing only: 10-15 words why it does/doesn't go the distance, null for other sports>"
+  }
 }`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1600, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await r.json();
     if (data.error) {

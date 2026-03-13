@@ -323,6 +323,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:1
 .em-2col{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .em-outcome{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .em-outcome:hover,.em-outcome:active{border-color:var(--accent);background:rgba(240,180,41,.06)}
+.em-ai-pick{border-color:rgba(139,92,246,.5)!important;background:rgba(139,92,246,.07)!important}
+.em-ai-pick:hover,.em-ai-pick:active{border-color:#8b5cf6!important;background:rgba(139,92,246,.15)!important}
 .em-outcome-label{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3}
 .em-outcome-odds{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
 /* ── LEADERBOARD ── */
@@ -2641,6 +2643,7 @@ async function requestAIAnalysis(m) {
         UPCOMING[idx].keyFactor = data.analysis.keyFactor || '';
         UPCOMING[idx].bettingAngle = data.analysis.bettingAngle || '';
         UPCOMING[idx].valueBet = data.analysis.valueBet != null ? data.analysis.valueBet : UPCOMING[idx].valueBet;
+        UPCOMING[idx].props = data.analysis.props || null;
         UPCOMING[idx].pick = data.analysis.recommendation || UPCOMING[idx].pick;
       }
       stopFactCycler();
@@ -2871,28 +2874,58 @@ function generateExtraMarkets(m) {
   return markets;
 }
 
+// Returns a small AI pick badge HTML for a given market, or '' if no pick available
+function getMarketAIPick(m, marketId) {
+  const p = m.props;
+  if (!p || !m.aiReady) return { badge: '', reason: '' };
+  const badge = (label) => `<span style="font-size:9px;background:rgba(139,92,246,.18);color:#a78bfa;border:1px solid rgba(139,92,246,.35);border-radius:4px;padding:2px 6px;font-weight:700;letter-spacing:.5px;margin-left:6px">🤖 ${label}</span>`;
+  if (marketId === 'ou' && p.ou) return { badge: badge(p.ou.toUpperCase()), reason: p.ouReason || '' };
+  if (marketId === 'ou25' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 2.5' : 'UNDER 2.5'), reason: p.ouReason || '' };
+  if (marketId === 'ou35' && p.ou) return { badge: badge(p.ou === 'over' ? 'OVER 3.5' : 'UNDER 3.5'), reason: '' };
+  if (marketId === 'margin' && p.margin) return { badge: badge(p.margin.toUpperCase()), reason: '' };
+  if (marketId === 'btts' && p.btts) return { badge: badge('BTTS: ' + p.btts.toUpperCase()), reason: '' };
+  if (marketId === 'mov' && p.mov) return { badge: badge(p.mov), reason: '' };
+  if (marketId === 'dist' && p.dist) return { badge: badge(p.dist === 'yes' ? 'GOES DISTANCE' : 'EARLY FINISH'), reason: p.distReason || '' };
+  return { badge: '', reason: '' };
+}
+
 function renderExtraMarkets(m) {
   const markets = generateExtraMarkets(m);
   if (!markets.length) return '';
   return `
     <div style="margin-bottom:16px">
       <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin-bottom:8px">📊 EXTRA MARKETS</div>
-      ${markets.map((mkt, idx) => `
+      ${markets.map((mkt, idx) => {
+        const ai = getMarketAIPick(m, mkt.id);
+        return `
         <div class="em-market">
           <div class="em-title" onclick="toggleEM('${mkt.id}')" data-testid="em-header-${mkt.id}">
-            <span>${mkt.name}</span>
-            <span id="em-chev-${mkt.id}" style="font-size:10px;color:var(--muted)">${idx === 0 ? '▲' : '▼'}</span>
+            <span style="display:flex;align-items:center;gap:0;flex-wrap:wrap">${mkt.name}${ai.badge}</span>
+            <span id="em-chev-${mkt.id}" style="font-size:10px;color:var(--muted);flex-shrink:0">${idx === 0 ? '▲' : '▼'}</span>
           </div>
           <div class="em-body" id="em-body-${mkt.id}" style="${idx === 0 ? '' : 'display:none'}">
             <div class="em-2col">
-              ${mkt.outcomes.map(o => `
-                <button class="em-outcome" onclick="openMarketBet('${m.id}','${(o.label||'').replace(/'/g,'\\\'')}',${_emFl(o.odds)})" data-testid="em-outcome-${mkt.id}">
-                  <div class="em-outcome-label">${o.label}</div>
+              ${mkt.outcomes.map(o => {
+                const isAIPick = ai.badge && (
+                  (mkt.id==='ou' && o.label.toLowerCase().startsWith(m.props?.ou||'__')) ||
+                  (mkt.id==='ou25' && o.label.toLowerCase().includes(m.props?.ou||'__')) ||
+                  (mkt.id==='ou35' && o.label.toLowerCase().includes(m.props?.ou||'__')) ||
+                  (mkt.id==='margin' && m.props?.margin && o.label.replace(/\u2013/g,'-') === m.props.margin.replace(/\u2013/g,'-')) ||
+                  (mkt.id==='btts' && o.label.toLowerCase() === (m.props?.btts||'__')) ||
+                  (mkt.id==='mov' && o.label === m.props?.mov) ||
+                  (mkt.id==='dist' && ((m.props?.dist==='yes'&&o.label==='Yes')||(m.props?.dist==='no'&&o.label==='No')))
+                );
+                return `
+                <button class="em-outcome${isAIPick ? ' em-ai-pick' : ''}" onclick="openMarketBet('${m.id}','${(o.label||'').replace(/'/g,'\\\'')}',${_emFl(o.odds)})" data-testid="em-outcome-${mkt.id}">
+                  <div class="em-outcome-label">${o.label}${isAIPick ? ' 🤖' : ''}</div>
                   <div class="em-outcome-odds">${_emFl(o.odds)}x</div>
-                </button>`).join('')}
+                </button>`;
+              }).join('')}
             </div>
+            ${ai.reason ? `<div style="font-size:11px;color:#a78bfa;padding:6px 10px 8px;border-top:1px solid rgba(139,92,246,.2);background:rgba(139,92,246,.04);line-height:1.4">🤖 ${ai.reason}</div>` : ''}
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
