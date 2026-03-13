@@ -327,6 +327,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:1
 .em-ai-pick:hover,.em-ai-pick:active{border-color:#8b5cf6!important;background:rgba(139,92,246,.15)!important}
 .em-outcome-label{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3}
 .em-outcome-odds{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
+.em-outcome.in-slip{border-color:rgba(16,185,129,.5)!important;background:rgba(16,185,129,.07)!important}
+/* Bet Slip */
+#slip-fab{position:fixed;bottom:calc(66px + env(safe-area-inset-bottom,0px));right:14px;z-index:350;background:linear-gradient(135deg,#f0b429,#f97316);border:none;border-radius:50%;width:52px;height:52px;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 18px rgba(240,180,41,.45);font-size:22px;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+#slip-fab.has-legs{display:flex}#slip-fab:active{transform:scale(.9)}
+#slip-count{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono);pointer-events:none}
+#slip-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:900;backdrop-filter:blur(2px)}
+#slip-sheet{display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;z-index:901;box-shadow:0 -20px 60px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto}
+.slip-leg{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.slip-leg:last-of-type{border-bottom:none}
+.slip-leg-info{flex:1;min-width:0}
+.slip-leg-mkt{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px}
+.slip-leg-sel{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip-leg-match{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip-leg-odds{font-family:var(--mono);font-size:14px;font-weight:700;color:#f0b429;flex-shrink:0;padding-top:2px}
+.slip-rm{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent}.slip-rm:active{color:#ef4444}
+.slip-pill{background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);color:var(--accent);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:700;flex-shrink:0;transition:all .15s;padding:0;line-height:1;-webkit-tap-highlight-color:transparent}
+.slip-pill:active{transform:scale(.88)}.slip-pill.added{background:rgba(16,185,129,.14)!important;border-color:rgba(16,185,129,.5)!important;color:#10b981!important}
+.slip-add-btn{display:block;margin-top:8px;width:100%;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);color:var(--accent);border-radius:6px;padding:5px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .15s;font-family:'Oswald',sans-serif;-webkit-tap-highlight-color:transparent}
+.slip-add-btn:active{background:rgba(240,180,41,.2)}.slip-add-btn.added{background:rgba(16,185,129,.12)!important;border-color:rgba(16,185,129,.4)!important;color:#10b981!important}
 /* ── LEADERBOARD ── */
 /* ── MATCH OF THE DAY ── */
 /* ── QUICK START / BEST BET STRIP ── */
@@ -1220,6 +1239,24 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
   </button>
 </div>
 
+<!-- ── BET SLIP FAB ── -->
+<button id="slip-fab" onclick="openBetSlip()" data-testid="button-open-slip" title="Bet Slip">
+  🎫<span id="slip-count">0</span>
+</button>
+
+<!-- ── BET SLIP SHEET ── -->
+<div id="slip-overlay" onclick="closeBetSlip()"></div>
+<div id="slip-sheet">
+  <div style="padding:16px 20px 0">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;margin-top:4px">
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;letter-spacing:1px;color:var(--text)">🎫 BET SLIP</div>
+      <button onclick="closeBetSlip()" style="background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer;padding:4px;line-height:1;-webkit-tap-highlight-color:transparent">×</button>
+    </div>
+  </div>
+  <div id="slip-body" style="padding:0 20px 40px"></div>
+</div>
+
 <!-- ── USER MENU SHEET (mobile) ── -->
 <div id="user-menu-overlay" onclick="closeUserSheet()"></div>
 <div id="user-menu-sheet" class="bottom-sheet">
@@ -1324,6 +1361,7 @@ footer{border-top:1px solid var(--border2);padding:16px 28px;display:flex;justif
 // ═══════════════════════════════════════════════════════════════════
 const BETS_KEY = 'edgeiq-bets-v1';
 let bets = [];
+let betSlip = [];
 let editId = null;
 let deleteId = null;
 let currentSport = 'all';
@@ -2945,11 +2983,18 @@ function renderExtraMarkets(m) {
                   (mkt.id==='dist' && ((m.props?.dist==='yes'&&o.label==='Yes')||(m.props?.dist==='no'&&o.label==='No'))) ||
                   (ai.pick && o.label === ai.pick)
                 );
+                const _inSlip = isInSlip(String(m.id), mkt.id, o.label);
+                const _safeLabel = (o.label||'').replace(/'/g,"\\'");
+                const _safeMkt = mkt.name.replace(/'/g,"\\'");
+                const _safeMatchEM = (m.home + ' vs ' + m.away).replace(/'/g,"\\'");
                 return `
-                <button class="em-outcome${isAIPick ? ' em-ai-pick' : ''}" onclick="openMarketBet('${m.id}','${(o.label||'').replace(/'/g,'\\\'')}',${_emFl(o.odds)})" data-testid="em-outcome-${mkt.id}">
-                  <div class="em-outcome-label">${o.label}${isAIPick ? ' 🤖' : ''}</div>
-                  <div class="em-outcome-odds">${_emFl(o.odds)}x</div>
-                </button>`;
+                <div class="em-outcome${isAIPick ? ' em-ai-pick' : ''}${_inSlip ? ' in-slip' : ''}" data-testid="em-outcome-${mkt.id}" style="display:flex;align-items:center;gap:6px">
+                  <button onclick="openMarketBet('${m.id}','${_safeLabel}',${_emFl(o.odds)})" style="flex:1;background:none;border:none;padding:0;text-align:left;cursor:pointer;min-width:0;-webkit-tap-highlight-color:transparent">
+                    <div class="em-outcome-label">${o.label}${isAIPick ? ' 🤖' : ''}</div>
+                    <div class="em-outcome-odds">${_emFl(o.odds)}x</div>
+                  </button>
+                  <button class="slip-pill${_inSlip?' added':''}" onclick="event.stopPropagation();addToSlip('${m.id}','${_safeMatchEM}','${m.sport}','${_safeMkt}','${_safeLabel}',${_emFl(o.odds)},this)" title="${_inSlip?'Remove from slip':'Add to slip'}">${_inSlip?'✓':'+'}</button>
+                </div>`;
               }).join('')}
             </div>
             ${ai.reason ? `<div style="font-size:11px;color:#a78bfa;padding:6px 10px 8px;border-top:1px solid rgba(139,92,246,.2);background:rgba(139,92,246,.04);line-height:1.4">🤖 ${ai.reason}</div>` : ''}
@@ -3057,6 +3102,7 @@ function openMatchModal(matchId) {
       </div>
     </div>`;
   } else {
+    const _safeMatch = (m.home + ' vs ' + m.away).replace(/'/g,"\\'");
     oddsRow = `
     <div style="display:flex;gap:10px;margin-bottom:20px">
       <div style="flex:1;background:var(--bg);border:1px solid ${m.pick===m.home?'rgba(240,180,41,.4)':'var(--border)'};border-radius:10px;padding:14px;text-align:center">
@@ -3064,6 +3110,7 @@ function openMatchModal(matchId) {
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">${m.home}</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick===m.home?'#f0b429':'var(--text)'}">${m.homeOdds||'—'}</div>
         ${m.pick===m.home?`<div style="font-size:10px;color:#f0b429;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        ${m.homeOdds?`<button class="slip-add-btn${isInSlip(String(m.id),'H2H',m.home)?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','${m.home.replace(/'/g,"\\'")}',${m.homeOdds},this)">${isInSlip(String(m.id),'H2H',m.home)?'✓ IN SLIP':'+ ADD TO SLIP'}</button>`:''}
       </div>
       ${m.drawOdds?`
       <div style="flex:1;background:var(--bg);border:1px solid ${m.pick==='Draw'?'rgba(240,180,41,.4)':'var(--border)'};border-radius:10px;padding:14px;text-align:center">
@@ -3071,12 +3118,14 @@ function openMatchModal(matchId) {
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">Draw</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick==='Draw'?'#f0b429':'var(--text)'}">${m.drawOdds}</div>
         ${m.pick==='Draw'?`<div style="font-size:10px;color:#f0b429;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        <button class="slip-add-btn${isInSlip(String(m.id),'H2H','Draw')?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','Draw',${m.drawOdds},this)">${isInSlip(String(m.id),'H2H','Draw')?'✓ IN SLIP':'+ ADD TO SLIP'}</button>
       </div>`:''}
       <div style="flex:1;background:var(--bg);border:1px solid ${m.pick===m.away?'rgba(240,180,41,.4)':'var(--border)'};border-radius:10px;padding:14px;text-align:center">
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">AWAY</div>
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">${m.away}</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick===m.away?'#f0b429':'var(--text)'}">${m.awayOdds||'—'}</div>
         ${m.pick===m.away?`<div style="font-size:10px;color:#f0b429;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        ${m.awayOdds?`<button class="slip-add-btn${isInSlip(String(m.id),'H2H',m.away)?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','${m.away.replace(/'/g,"\\'")}',${m.awayOdds},this)">${isInSlip(String(m.id),'H2H',m.away)?'✓ IN SLIP':'+ ADD TO SLIP'}</button>`:''}
       </div>
     </div>`;
   }
@@ -3982,6 +4031,157 @@ function openBookieSheetFromQB() {
   }
   const stake = document.getElementById('qb-stake').value;
   openBookieSheet(m.id, pick, odds, m.sport, stake);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BET SLIP
+// ═══════════════════════════════════════════════════════════════════
+(function initSlip() {
+  try { betSlip = JSON.parse(localStorage.getItem('edgeiq-slip') || '[]'); } catch { betSlip = []; }
+  setTimeout(updateSlipFab, 200);
+})();
+
+function saveSlip() { try { localStorage.setItem('edgeiq-slip', JSON.stringify(betSlip)); } catch {} }
+
+function updateSlipFab() {
+  const fab = document.getElementById('slip-fab');
+  const cnt = document.getElementById('slip-count');
+  if (!fab) return;
+  if (betSlip.length > 0) { fab.classList.add('has-legs'); cnt.textContent = betSlip.length; }
+  else { fab.classList.remove('has-legs'); }
+}
+
+function isInSlip(matchId, market, outcome) {
+  return betSlip.some(l => String(l.matchId) === String(matchId) && l.market === market && l.outcome === outcome);
+}
+
+function addToSlip(matchId, match, sport, market, outcome, odds, btnEl) {
+  const idx = betSlip.findIndex(l => String(l.matchId) === String(matchId) && l.market === market && l.outcome === outcome);
+  if (idx !== -1) {
+    betSlip.splice(idx, 1);
+    saveSlip(); updateSlipFab();
+    if (btnEl) { btnEl.textContent = '+'; btnEl.classList.remove('added'); }
+    showToast('Removed from slip', false);
+  } else {
+    betSlip.push({ matchId: String(matchId), match, sport, market, outcome, odds });
+    saveSlip(); updateSlipFab();
+    if (btnEl) { btnEl.textContent = '✓'; btnEl.classList.add('added'); }
+    showToast(`✓ ${betSlip.length} leg${betSlip.length > 1 ? 's' : ''} in slip`, true);
+  }
+}
+
+function removeFromSlip(idx) {
+  betSlip.splice(idx, 1);
+  saveSlip(); updateSlipFab();
+  renderBetSlip();
+}
+
+function clearBetSlip() {
+  betSlip = [];
+  saveSlip(); updateSlipFab();
+  closeBetSlip();
+}
+
+function openBetSlip() {
+  renderBetSlip();
+  document.getElementById('slip-overlay').style.display = 'block';
+  document.getElementById('slip-sheet').style.display = 'block';
+}
+
+function closeBetSlip() {
+  document.getElementById('slip-overlay').style.display = 'none';
+  document.getElementById('slip-sheet').style.display = 'none';
+}
+
+function updateSlipReturn() {
+  const stake = parseFloat(document.getElementById('slip-stake')?.value || '');
+  const retRow = document.getElementById('slip-ret-row');
+  const retVal = document.getElementById('slip-ret-val');
+  if (!retRow || !retVal) return;
+  if (!isNaN(stake) && stake > 0) {
+    const combined = betSlip.reduce((p, l) => p * l.odds, 1);
+    retRow.style.display = 'flex';
+    retVal.textContent = '$' + (stake * combined).toFixed(2);
+  } else { retRow.style.display = 'none'; }
+}
+
+function logMultiBet() {
+  const stake = parseFloat(document.getElementById('slip-stake')?.value || '');
+  if (isNaN(stake) || stake <= 0) { showToast('⚠️ Enter a valid stake', false); return; }
+  const combined = parseFloat(betSlip.reduce((p, l) => p * l.odds, 1).toFixed(2));
+  const legsDetail = betSlip.map(l => `${l.outcome} (${l.match}) @ ${l.odds}x`).join(' | ');
+  const b = {
+    id: Date.now(),
+    event: `${betSlip.length}-Leg Multi`,
+    bet: betSlip.map(l => l.outcome).join(' / '),
+    sport: betSlip[0]?.sport || 'Other',
+    stake, odds: combined,
+    result: 'PENDING',
+    betType: 'MULTI',
+    date: new Date().toISOString().split('T')[0],
+    notes: legsDetail,
+    bookmaker: '', confidence: '', position: '',
+    match: `${betSlip.length}-Leg Multi`,
+    label: betSlip.map(l => l.outcome).join(' / '),
+  };
+  bets.push(b);
+  saveBets();
+  renderMyBets();
+  showToast(`✓ ${betSlip.length}-leg multi logged!`, true);
+  clearBetSlip();
+}
+
+function renderBetSlip() {
+  const body = document.getElementById('slip-body');
+  if (!body) return;
+  if (betSlip.length === 0) {
+    body.innerHTML = `<div style="text-align:center;padding:44px 20px;color:var(--muted)">
+      <div style="font-size:42px;margin-bottom:12px">🎫</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Slip is empty</div>
+      <div style="font-size:12px">Tap the <strong style="color:var(--accent)">+</strong> on any outcome to add a leg</div>
+    </div>`;
+    return;
+  }
+  const combined = betSlip.reduce((p, l) => p * l.odds, 1);
+  body.innerHTML = `
+    <div>${betSlip.map((l, i) => `
+      <div class="slip-leg">
+        <div class="slip-leg-info">
+          <div class="slip-leg-mkt">${l.sport} · ${l.market}</div>
+          <div class="slip-leg-sel">${l.outcome}</div>
+          <div class="slip-leg-match">${l.match}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div class="slip-leg-odds">${l.odds}x</div>
+          <button class="slip-rm" onclick="removeFromSlip(${i})" title="Remove leg">×</button>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="background:var(--bg3);border-radius:12px;padding:14px 16px;margin:14px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:1px">COMBINED ODDS</span>
+        <span style="font-family:var(--mono);font-size:24px;font-weight:700;color:#f0b429">${combined.toFixed(2)}x</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:1px">${betSlip.length} LEG${betSlip.length > 1 ? 'S' : ''}</span>
+        <span style="font-size:11px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${betSlip.map(l => l.outcome).join(', ')}</span>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);letter-spacing:1px;display:block;margin-bottom:6px">STAKE ($)</label>
+      <input type="number" id="slip-stake" data-testid="input-slip-stake" placeholder="50.00" step="5" inputmode="decimal"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-family:var(--mono);font-size:16px;box-sizing:border-box;outline:none"
+        oninput="updateSlipReturn()">
+    </div>
+    <div id="slip-ret-row" style="display:none;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:11px 14px;margin-bottom:14px;align-items:center;justify-content:space-between">
+      <span style="font-size:11px;color:var(--muted);letter-spacing:1px">POTENTIAL RETURN</span>
+      <span id="slip-ret-val" style="font-family:var(--mono);font-size:18px;font-weight:700;color:#10b981"></span>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-primary" style="flex:1" data-testid="button-log-multi" onclick="logMultiBet()">💾 LOG MULTI BET</button>
+      <button onclick="clearBetSlip()" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:10px;padding:12px 16px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent">CLEAR</button>
+    </div>
+  `;
 }
 
 // ═══════════════════════════════════════════════════════════════════
