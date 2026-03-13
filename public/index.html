@@ -315,6 +315,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:1
   animation:value-glow 2.5s ease-in-out infinite;
 }
 
+/* ── EXTRA MARKETS ── */
+.em-market{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.em-title{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text);background:var(--bg2);user-select:none;-webkit-tap-highlight-color:transparent;letter-spacing:.3px;transition:background .15s}
+.em-title:hover,.em-title:active{background:var(--bg3)}
+.em-body{padding:10px;background:var(--bg)}
+.em-2col{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.em-outcome{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.em-outcome:hover,.em-outcome:active{border-color:var(--accent);background:rgba(240,180,41,.06)}
+.em-outcome-label{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3}
+.em-outcome-odds{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
 /* ── LEADERBOARD ── */
 /* ── MATCH OF THE DAY ── */
 /* ── QUICK START / BEST BET STRIP ── */
@@ -2580,6 +2590,239 @@ function formatAIBold(text) {
     .replace(/\. ([A-Z])/g, '.<br>$1');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// EXTRA MARKETS
+// ═══════════════════════════════════════════════════════════════════
+const AFL_FWDS = ['Jack Gunston','Tom Lynch','Harry McKay','Charlie Dixon','Jeremy Cameron',
+  'Peter Wright','Callum Ah Chee','Mabior Chol','Jack Riewoldt','Sam Hayes',
+  'Jordan De Goey','Kyle Langford','Nate Caddy','Nick Watson','Mitch Lewis',
+  'Joshua Rachele','Liam Henry','Gryan Miers','Tom Papley','Jake Riccardi',
+  'Sam Weideman','Tex Walker','Taylor Walker','Matthew Owies','James Tsitas',
+  'Patrick Voss','Luke Jackson','Callum Coleman-Jones','Sam Draper','Max King'];
+const AFL_MIDS = ['Darcy Parish','Zach Merrett','Clayton Oliver','Patrick Cripps','Touk Miller',
+  'Tom Mitchell','Sam Walsh','Jordan Dawson','Rory Laird','Marcus Bontempelli',
+  'Lachie Neale','Christian Petracca','Caleb Serong','Bailey Smith','Adam Treloar',
+  'Luke Shuey','Tim Kelly','Zak Butters','Nick Hind','Will Setterfield',
+  'Josh Dunkley','James Sicily','Jai Newcombe','Karl Amon','James Worpel',
+  'Connor Macdonald','Dylan Moore','Jack Scrimshaw','Will Day','Archie Roberts',
+  'Jye Caldwell','Andrew McGrath','Blake Hardwick','Angus Brayshaw','Lachlan Filipovic'];
+const NRL_BACKS = ['Roger Tuivasa-Sheck','David Nofoaluma','Daniel Tupou','Ken Maumalo',
+  'Kotoni Staggs','Xavier Coates','Corey Oates','Selwyn Cobbo','Euan Aitken',
+  'Tommy Talau','Tim Lafai','Brent Naden','Lehi Hopoate','Starford To\'a',
+  'Zac Lomax','Brian To\'o','Josh Addo-Carr','Dallin Watene-Zelezniak'];
+const NRL_HALVES = ['Nathan Cleary','Nicho Hynes','Kalyn Ponga','Daly Cherry-Evans',
+  'Cameron Munster','Adam Reynolds','Luke Keary','Jarome Luai','Mitchell Moses',
+  'Tom Dearden','Jahrome Hughes','Chad Townsend','Kyle Flanagan'];
+const NBA_POOL = ['LeBron James','Stephen Curry','Kevin Durant','Giannis Antetokounmpo',
+  'Joel Embiid','Nikola Jokic','Jayson Tatum','Devin Booker','Anthony Davis',
+  'Zion Williamson','Damian Lillard','Donovan Mitchell','Tyrese Haliburton',
+  'Ja Morant','Trae Young','Luka Doncic','Shai Gilgeous-Alexander',
+  'Jimmy Butler','Bam Adebayo','Pascal Siakam','OG Anunoby','Kyrie Irving'];
+
+function _emRand(seed) {
+  let s = Math.abs(String(seed).split('').reduce((a,c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
+  if (!s) s = 99991;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) | 0; return (s >>> 0) / 4294967296; };
+}
+function _emFl(v) { return Math.round(v * 100) / 100; }
+function _emPickN(arr, n, rand) {
+  const copy = [...arr]; const out = [];
+  for (let i = 0; i < n && copy.length; i++) {
+    const idx = Math.floor(rand() * copy.length);
+    out.push(copy.splice(idx, 1)[0]);
+  }
+  return out;
+}
+
+function generateExtraMarkets(m) {
+  if (!m || m.isRacing) return [];
+  const rand = _emRand(m.id);
+  const fl = _emFl;
+  const pickN = (arr, n) => _emPickN(arr, n, rand);
+  const rOdds = (base, spread = 0.08) => fl(Math.max(1.01, base + (rand() - 0.5) * spread));
+
+  const homeOdds = m.homeOdds || 2, awayOdds = m.awayOdds || 2;
+  const homeProb = (1 / homeOdds) / (1 / homeOdds + 1 / awayOdds);
+  const probDiff = homeProb - 0.5;
+  const favTeam = probDiff >= 0 ? m.home : m.away;
+  const dogTeam = probDiff >= 0 ? m.away : m.home;
+  const favOdds = Math.min(homeOdds, awayOdds);
+  const dogOdds = Math.max(homeOdds, awayOdds);
+  const markets = [];
+
+  if (m.sport === 'AFL') {
+    // AFL: ~100 pts per unit of normalised prob diff (e.g. 0.294 → ~29.5)
+    const linePts = (Math.round(Math.abs(probDiff) * 100 / 0.5) * 0.5) + 0.5;
+    markets.push({ id:'line', name:'🏈 Line', outcomes: [
+      { label: `${favTeam} -${linePts}`, odds: rOdds(1.90) },
+      { label: `${dogTeam} +${linePts}`, odds: rOdds(1.90) }
+    ]});
+    const ou = Math.round((155 + rand() * 40) * 2) / 2;
+    markets.push({ id:'ou', name:'📊 Total Points O/U', outcomes: [
+      { label: `Over ${ou}`, odds: rOdds(1.90) },
+      { label: `Under ${ou}`, odds: rOdds(1.90) }
+    ]});
+    markets.push({ id:'margin', name:'🎯 Winning Margin', outcomes: [
+      { label: `${favTeam} 1–39`, odds: fl(favOdds * 0.84 + rand() * 0.06) },
+      { label: `${favTeam} 40+`, odds: fl(favOdds * 2.7 + rand() * 0.3) },
+      { label: `${dogTeam} 1–39`, odds: fl(dogOdds * 0.84 + rand() * 0.08) },
+      { label: `${dogTeam} 40+`, odds: fl(dogOdds * 4.2 + rand() * 0.5) },
+      { label: 'Draw', odds: rOdds(61, 8) }
+    ]});
+    const fwdsA = pickN(AFL_FWDS, 5).map(n => ({ label: n, odds: fl(8 + rand() * 14) }));
+    const fwdsB = pickN(AFL_FWDS.filter(p => !fwdsA.map(x=>x.label).includes(p)), 5).map(n => ({ label: n, odds: fl(8 + rand() * 14) }));
+    const fgAll = [...fwdsA, ...fwdsB].sort((a,b) => a.odds - b.odds).slice(0, 10);
+    markets.push({ id:'firstgoal', name:'🥅 First Goal Scorer', outcomes: fgAll });
+    markets.push({ id:'2goals', name:'⚽ Anytime Goal Scorer (2+)', outcomes:
+      fgAll.map(p => ({ label: p.label, odds: fl(p.odds * 0.5 + rand() * 0.15) })).sort((a,b) => a.odds - b.odds)
+    });
+    const midsA = pickN(AFL_MIDS, 4).map(n => ({ label: n, odds: rOdds(1.12 + rand() * 0.35, 0.04) }));
+    const midsB = pickN(AFL_MIDS.filter(p => !midsA.map(x=>x.label).includes(p)), 4).map(n => ({ label: n, odds: rOdds(1.12 + rand() * 0.35, 0.04) }));
+    const d20all = [...midsA, ...midsB].sort((a,b) => a.odds - b.odds);
+    markets.push({ id:'20dis', name:'📋 20+ Disposals', outcomes: d20all });
+    markets.push({ id:'25dis', name:'📋 25+ Disposals', outcomes:
+      d20all.map(p => ({ label: p.label, odds: fl(p.odds * 1.5 + rand() * 0.2) })).sort((a,b) => a.odds - b.odds)
+    });
+
+  } else if (m.sport === 'NRL') {
+    // NRL: ~48 pts per unit (e.g. 0.20 → ~9.5)
+    const linePts = (Math.round(Math.abs(probDiff) * 48 / 0.5) * 0.5) + 0.5;
+    markets.push({ id:'line', name:'🏉 Line', outcomes: [
+      { label: `${favTeam} -${linePts}`, odds: rOdds(1.90) },
+      { label: `${dogTeam} +${linePts}`, odds: rOdds(1.90) }
+    ]});
+    const ou = Math.round((38 + rand() * 14) * 2) / 2;
+    markets.push({ id:'ou', name:'📊 Total Points O/U', outcomes: [
+      { label: `Over ${ou}`, odds: rOdds(1.90) },
+      { label: `Under ${ou}`, odds: rOdds(1.90) }
+    ]});
+    const tryers = pickN([...NRL_BACKS, ...NRL_HALVES], 10);
+    const fts = tryers.slice(0, 10).map(n => ({ label: n, odds: fl(7 + rand() * 12) })).sort((a,b) => a.odds - b.odds).slice(0, 8);
+    markets.push({ id:'firsttry', name:'🏃 First Try Scorer', outcomes: fts });
+    markets.push({ id:'anytry', name:'🏃 Anytime Try Scorer', outcomes:
+      fts.map(p => ({ label: p.label, odds: fl(p.odds * 0.42 + rand() * 0.1) })).sort((a,b) => a.odds - b.odds)
+    });
+
+  } else if (m.sport === 'NBA') {
+    // NBA: ~90 pts per unit (e.g. 0.15 → ~13.5)
+    const linePts = (Math.round(Math.abs(probDiff) * 90 / 0.5) * 0.5) + 0.5;
+    markets.push({ id:'spread', name:'🏀 Point Spread', outcomes: [
+      { label: `${favTeam} -${linePts}`, odds: rOdds(1.90) },
+      { label: `${dogTeam} +${linePts}`, odds: rOdds(1.90) }
+    ]});
+    const ou = Math.round((210 + rand() * 30) * 2) / 2;
+    markets.push({ id:'ou', name:'📊 Total Points O/U', outcomes: [
+      { label: `Over ${ou}`, odds: rOdds(1.90) },
+      { label: `Under ${ou}`, odds: rOdds(1.90) }
+    ]});
+    const stars = pickN(NBA_POOL, 6);
+    markets.push({ id:'pts20', name:'🏀 Player 20+ Points', outcomes:
+      stars.map(n => ({ label: n, odds: rOdds(1.72 + rand() * 0.7, 0.06) })).sort((a,b) => a.odds - b.odds)
+    });
+    markets.push({ id:'pts30', name:'🏀 Player 30+ Points', outcomes:
+      stars.map(n => ({ label: n, odds: rOdds(3.5 + rand() * 1.5, 0.1) })).sort((a,b) => a.odds - b.odds)
+    });
+
+  } else if (m.sport === 'Soccer') {
+    markets.push({ id:'ah', name:'⚽ Asian Handicap -0.5', outcomes: [
+      { label: `${favTeam} -0.5`, odds: rOdds(1.88, 0.1) },
+      { label: `${dogTeam} +0.5`, odds: rOdds(1.95, 0.1) }
+    ]});
+    markets.push({ id:'ou25', name:'🎯 Total Goals O/U 2.5', outcomes: [
+      { label: 'Over 2.5', odds: rOdds(1.85, 0.08) },
+      { label: 'Under 2.5', odds: rOdds(1.98, 0.08) }
+    ]});
+    markets.push({ id:'ou35', name:'🎯 Total Goals O/U 3.5', outcomes: [
+      { label: 'Over 3.5', odds: rOdds(2.65, 0.15) },
+      { label: 'Under 3.5', odds: rOdds(1.46, 0.1) }
+    ]});
+    markets.push({ id:'btts', name:'🥅 Both Teams to Score', outcomes: [
+      { label: 'Yes', odds: rOdds(1.72, 0.08) },
+      { label: 'No', odds: rOdds(2.08, 0.1) }
+    ]});
+    markets.push({ id:'htft', name:'⏱️ Half-Time / Full-Time', outcomes: [
+      { label: `${m.home} / ${m.home}`, odds: fl(favOdds * 1.55 + rand() * 0.1) },
+      { label: `${m.away} / ${m.away}`, odds: fl(dogOdds * 1.55 + rand() * 0.15) },
+      { label: 'Draw / Draw', odds: rOdds(3.8, 0.3) },
+      { label: `Draw / ${m.home}`, odds: rOdds(5.5, 0.5) },
+      { label: `Draw / ${m.away}`, odds: rOdds(6.5, 0.5) }
+    ]});
+
+  } else if (m.sport === 'UFC' || m.sport === 'Boxing') {
+    const movOutcomes = [
+      { label: `${m.home} by KO/TKO`, odds: fl(favOdds * 0.74 + rand() * 0.1) },
+      { label: `${m.home} by Decision`, odds: fl(favOdds * 0.88 + rand() * 0.08) },
+      { label: `${m.away} by KO/TKO`, odds: fl(dogOdds * 0.74 + rand() * 0.12) },
+      { label: `${m.away} by Decision`, odds: fl(dogOdds * 0.88 + rand() * 0.1) }
+    ];
+    if (m.sport === 'UFC') {
+      movOutcomes.splice(2, 0, { label: `${m.home} by Submission`, odds: fl(favOdds * 1.3 + rand() * 0.15) });
+      movOutcomes.push({ label: `${m.away} by Submission`, odds: fl(dogOdds * 1.3 + rand() * 0.15) });
+    }
+    markets.push({ id:'mov', name:'🥊 Method of Victory', outcomes: movOutcomes });
+    markets.push({ id:'dist', name:'⏱️ Goes the Distance', outcomes: [
+      { label: 'Yes', odds: rOdds(1.75, 0.12) },
+      { label: 'No', odds: rOdds(2.00, 0.12) }
+    ]});
+    const rounds = m.sport === 'Boxing' ? 6 : 4;
+    markets.push({ id:'round', name:'🎯 Round Betting', outcomes:
+      Array.from({length: rounds}, (_, i) => ({ label: `Ends in Round ${i+1}`, odds: fl(8 + i * 1.8 + rand() * 1.2) }))
+    });
+  }
+
+  return markets;
+}
+
+function renderExtraMarkets(m) {
+  const markets = generateExtraMarkets(m);
+  if (!markets.length) return '';
+  return `
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin-bottom:8px">📊 EXTRA MARKETS</div>
+      ${markets.map((mkt, idx) => `
+        <div class="em-market">
+          <div class="em-title" onclick="toggleEM('${mkt.id}')" data-testid="em-header-${mkt.id}">
+            <span>${mkt.name}</span>
+            <span id="em-chev-${mkt.id}" style="font-size:10px;color:var(--muted)">${idx === 0 ? '▲' : '▼'}</span>
+          </div>
+          <div class="em-body" id="em-body-${mkt.id}" style="${idx === 0 ? '' : 'display:none'}">
+            <div class="em-2col">
+              ${mkt.outcomes.map(o => `
+                <button class="em-outcome" onclick="openMarketBet('${m.id}','${(o.label||'').replace(/'/g,'\\\'')}',${_emFl(o.odds)})" data-testid="em-outcome-${mkt.id}">
+                  <div class="em-outcome-label">${o.label}</div>
+                  <div class="em-outcome-odds">${_emFl(o.odds)}x</div>
+                </button>`).join('')}
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function toggleEM(id) {
+  const body = document.getElementById('em-body-' + id);
+  const chev = document.getElementById('em-chev-' + id);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chev) chev.textContent = isOpen ? '▼' : '▲';
+}
+
+function openMarketBet(matchId, label, odds) {
+  const m = UPCOMING.find(x => String(x.id) === String(matchId));
+  if (!m) return;
+  quickBetMatch = { ...m, _marketLabel: label, _marketOdds: odds };
+  document.getElementById('qb-match-label').textContent = `${m.home} vs ${m.away} · ${m.time}`;
+  document.getElementById('qb-pick-label').textContent = 'SELECTION';
+  document.getElementById('qb-pick').textContent = label;
+  document.getElementById('qb-odds').textContent = odds + 'x';
+  document.getElementById('qb-runner-selector').style.display = 'none';
+  document.getElementById('qb-runner-select').innerHTML = '';
+  document.getElementById('qb-stake').value = '';
+  document.getElementById('qb-result').value = 'PENDING';
+  document.getElementById('quick-bet-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('qb-stake').focus(), 100);
+}
+
 function openMatchModal(matchId) {
   const m = UPCOMING.find(x=>String(x.id)===String(matchId));
   if(!m) return;
@@ -2741,8 +2984,11 @@ function openMatchModal(matchId) {
 
   const valueBadge = m.valueBet ? `<div class="value-bet-badge" style="margin-bottom:16px">💰 VALUE BET DETECTED</div>` : '';
 
+  const extraMarketsHtml = m.isRacing ? '' : renderExtraMarkets(m);
+
   document.getElementById('md-body').innerHTML = `
     ${oddsRow}
+    ${extraMarketsHtml}
     ${valueBadge}
     ${aiSection}
     <div style="display:flex;gap:10px;margin-top:4px">
@@ -3376,6 +3622,10 @@ function saveQuickBet() {
     betPick = r.name;
     oddsVal = r.odds < 99 ? r.odds : 0;
     eventLabel = `R${m.raceNumber} ${m.venue}`;
+  } else if (m._marketLabel) {
+    betPick = m._marketLabel;
+    oddsVal = m._marketOdds;
+    eventLabel = `${m.home} vs ${m.away}`;
   } else {
     betPick = m.pick;
     oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
@@ -3393,7 +3643,7 @@ function saveQuickBet() {
     venue: m.venue||'', comp: m.comp||'',
     confidence: m.confidence||0,
     valueBet: !!m.valueBet, aiRecommended: !m.isRacing,
-    notes: m.isRacing ? 'Logged via Quick Bet (Racing)' : 'Logged via AI Quick Bet'
+    notes: m.isRacing ? 'Logged via Quick Bet (Racing)' : m._marketLabel ? 'Extra market bet' : 'Logged via AI Quick Bet'
   };
   bets.push(entry);
   saveBets();
