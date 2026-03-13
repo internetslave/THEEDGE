@@ -889,84 +889,6 @@ footer{border-top:1px solid var(--border);padding:18px 28px;display:flex;justify
   #slip-fab{bottom:72px;right:16px;width:52px;height:52px;border-radius:14px}
 }
 
-/* ═══════════════════════════════════════════════════════
-   REQUIRED COMPONENT STYLES — used by JS-rendered HTML
-   ═══════════════════════════════════════════════════════ */
-
-/* Confidence bars */
-.confidence-bar{margin-bottom:8px}
-.confidence-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px}
-.confidence-label span:first-child{color:var(--muted)}
-.confidence-label span:last-child{font-weight:700;font-family:var(--mono)}
-.conf-track{background:rgba(255,255,255,.04);border-radius:4px;height:6px}
-.conf-fill{height:100%;border-radius:4px;transition:width .8s ease}
-
-/* AI reasoning block */
-.ai-reasoning{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.04)}
-
-/* Value bet badge */
-.value-bet-badge{
-  display:inline-flex;align-items:center;gap:6px;
-  background:linear-gradient(135deg,rgba(240,180,41,.18),rgba(240,180,41,.06));
-  border:1px solid rgba(240,180,41,.5);border-radius:6px;padding:5px 12px;
-  font-size:11px;font-weight:800;color:#f0b429;letter-spacing:.8px;margin-bottom:10px;
-  animation:value-glow 2.5s ease-in-out infinite;
-}
-
-/* Extra markets accordion */
-.em-market{border:1px solid var(--glass-border);border-radius:10px;margin-bottom:8px;overflow:hidden}
-.em-title{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 14px;cursor:pointer;font-size:12px;font-weight:700;
-  color:var(--text);background:rgba(255,255,255,.02);
-  user-select:none;-webkit-tap-highlight-color:transparent;
-  letter-spacing:.3px;transition:background .15s;
-}
-.em-title:hover,.em-title:active{background:rgba(255,255,255,.05)}
-.em-body{padding:10px;background:var(--bg)}
-.em-2col{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.em-outcome{
-  background:rgba(255,255,255,.02);border:1px solid var(--glass-border);
-  border-radius:8px;padding:9px 11px;cursor:pointer;text-align:left;width:100%;
-  transition:border-color .15s,background .15s;
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-}
-.em-outcome:hover,.em-outcome:active{border-color:var(--accent);background:rgba(16,185,129,.06)}
-.em-ai-pick{border-color:rgba(139,92,246,.5)!important;background:rgba(139,92,246,.07)!important}
-.em-ai-pick:hover,.em-ai-pick:active{border-color:#8b5cf6!important;background:rgba(139,92,246,.15)!important}
-.em-outcome-label{font-size:10px;color:var(--muted);margin-bottom:4px;line-height:1.3}
-.em-outcome-odds{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
-.em-outcome.in-slip{border-color:rgba(16,185,129,.5)!important;background:rgba(16,185,129,.07)!important}
-
-/* Bet slip legs */
-.slip-leg{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
-.slip-leg:last-of-type{border-bottom:none}
-.slip-leg-info{flex:1;min-width:0}
-.slip-leg-mkt{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:2px;text-transform:uppercase}
-.slip-leg-sel{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip-leg-match{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip-leg-odds{font-family:var(--mono);font-size:14px;font-weight:700;color:#f0b429;flex-shrink:0;padding-top:2px}
-.slip-rm{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-.slip-rm:active{color:#ef4444}
-.slip-pill{
-  background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);
-  color:var(--green);border-radius:6px;width:28px;height:28px;
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:15px;font-weight:700;flex-shrink:0;
-  transition:all .15s;padding:0;line-height:1;-webkit-tap-highlight-color:transparent;
-}
-.slip-pill:active{transform:scale(.88)}
-.slip-pill.added{background:rgba(16,185,129,.2)!important;border-color:rgba(16,185,129,.6)!important;color:#10b981!important}
-.slip-add-btn{
-  display:block;margin-top:8px;width:100%;
-  background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
-  color:var(--green);border-radius:8px;padding:7px 8px;font-size:11px;font-weight:700;
-  letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .15s;
-  font-family:var(--mono);-webkit-tap-highlight-color:transparent;
-}
-.slip-add-btn:active{background:rgba(16,185,129,.15)}
-.slip-add-btn.added{background:rgba(16,185,129,.15)!important;border-color:rgba(16,185,129,.5)!important;color:#10b981!important}
-
 </style>
 </head>
 <body>
@@ -3032,7 +2954,7 @@ async function requestAIAnalysis(m) {
       const el = document.getElementById('md-ai-loading');
       if (el) {
         if (res.status === 401) {
-          el.innerHTML = '🔒 Session expired — please <a href="#" onclick="closeMatchModal();doLogout();return false" style="color:var(--accent);text-decoration:underline">sign in again</a>';
+          el.innerHTML = '🔒 Session expired — please <a href="#" onclick="closeMatchModal();openProfileModal();return false" style="color:var(--accent);text-decoration:underline">sign in again</a>';
         } else if (data?.errorType === 'credits') {
           el.innerHTML = '💳 AI credits exhausted — add credits at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);text-decoration:underline">console.anthropic.com</a> then reload';
         } else {
@@ -3570,7 +3492,7 @@ async function runAIAnalysis() {
   try {
     const res = await fetch('/api/analyse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-session-token': getToken() || '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         home: team1, away: team2, sport,
         homeOdds: odds1, awayOdds: odds2,
