@@ -1040,7 +1040,15 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
   const { event, playerMarkets } = req.body;
   if (!event?.id) return res.status(400).json({ success: false, error: 'Event data required' });
   try {
-    if (isFresh(aiCache, event.id, AI_TTL)) return res.json({ success: true, analysis: aiCache[event.id].data });
+    if (isFresh(aiCache, event.id, AI_TTL)) {
+      const cached = aiCache[event.id].data;
+      // If player markets were sent but cached entry predates playerPicks, force refresh
+      if (playerMarkets && !cached.playerPicks) {
+        delete aiCache[event.id];
+      } else {
+        return res.json({ success: true, analysis: cached });
+      }
+    }
     const analysis = await analyseMatch(event, playerMarkets || null);
     if (!analysis) return res.status(503).json({ success: false, error: 'AI unavailable' });
     if (analysis._error) return res.status(402).json({ success: false, errorType: analysis._error, error: analysis.message });
