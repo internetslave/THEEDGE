@@ -1052,8 +1052,8 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
   try {
     if (isFresh(aiCache, event.id, AI_TTL)) {
       const cached = aiCache[event.id].data;
-      // If player markets were sent but cached entry predates playerPicks, force refresh
-      if (playerMarkets && !cached.playerPicks) {
+      // Force refresh if cached entry predates props/playerPicks fields
+      if (!cached.props || (playerMarkets && !cached.playerPicks)) {
         delete aiCache[event.id];
       } else {
         return res.json({ success: true, analysis: cached });

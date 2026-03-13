@@ -3139,7 +3139,9 @@ function openMatchModal(matchId) {
       </div>
     </div>`;
 
-  if (!m.aiReady && !m.isRacing) {
+  const needsPlayerPicks = ['AFL','NRL','NBA'].includes(m.sport) && !m.playerPicks;
+  const needsProps = ['AFL','NRL','NBA','Soccer'].includes(m.sport) && !m.props;
+  if (!m.isRacing && (!m.aiReady || needsPlayerPicks || needsProps)) {
     requestAIAnalysis(m);
   }
 
