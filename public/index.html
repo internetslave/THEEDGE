@@ -79,12 +79,12 @@
     </div>
   </div>
   <nav class="nav">
-    <button class="nav-btn active" onclick="showPage('home')"><span class="emoji">🏠</span> Home</button>
-    <button class="nav-btn" onclick="showPage('tips')"><span class="emoji">⚡</span> AI Tips</button>
-    <button class="nav-btn" onclick="showPage('upcoming')"><span class="emoji">📅</span> Upcoming</button>
-    <button class="nav-btn" onclick="showPage('mybets')"><span class="emoji">📋</span> My Bets</button>
-    <button class="nav-btn" onclick="showPage('leaderboard')"><span class="emoji">🏆</span> Leaderboard</button>
-    <button class="nav-btn" onclick="showPage('analysis')"><span class="emoji">📊</span> Analysis</button>
+    <button class="nav-btn active" onclick="showPage('home')">Home</button>
+    <button class="nav-btn" onclick="showPage('tips')">AI Tips</button>
+    <button class="nav-btn" onclick="showPage('upcoming')">Upcoming</button>
+    <button class="nav-btn" onclick="showPage('mybets')">My Bets</button>
+    <button class="nav-btn" onclick="showPage('leaderboard')">Leaderboard</button>
+    <button class="nav-btn" onclick="showPage('analysis')">Analysis</button>
   </nav>
   <div class="header-right">
     <div style="display:flex;align-items:center;gap:6px">
@@ -92,9 +92,9 @@
       <button id="btn-manual-refresh" class="desktop-only" onclick="manualRefreshOdds()" title="Fetch latest odds" aria-label="Refresh odds" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;cursor:pointer;font-family:var(--mono);transition:all .15s;line-height:1" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↻</button>
       <span id="credits-badge" class="desktop-only" style="display:none;font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.5px;opacity:.75" title="Odds API credits remaining"></span>
     </div>
-    <button class="ai-btn desktop-only" onclick="openAIAnalysis()"><span class="emoji">🤖</span> AI ANALYSE</button>
-    <button class="desktop-only" onclick="window.location.href='/tipping'" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"><span class="emoji" style="letter-spacing:0;font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif">🎯</span> TIPPING</button>
-    <button class="desktop-only" onclick="window.location.href='/fantasy'" style="background:linear-gradient(135deg,#065f46,#059669);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"><span class="emoji" style="letter-spacing:0;font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif">🏆</span> FANTASY</button>
+    <button class="ai-btn desktop-only" onclick="openAIAnalysis()">AI ANALYSE</button>
+    <button class="desktop-only" onclick="window.location.href='/tipping'" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">TIPPING</button>
+    <button class="desktop-only" onclick="window.location.href='/fantasy'" style="background:linear-gradient(135deg,#065f46,#059669);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">FANTASY</button>
     <div id="user-badge" class="desktop-only" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px">
       <div id="user-avatar" class="emoji" style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px"></div>
       <div id="user-name" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)"></div>
@@ -109,15 +109,15 @@
 
 <!-- ── SPORT FILTER BAR ── -->
 <div id="sport-bar" style="display:none">
-  <button class="sport-chip active" onclick="setSport('all')" data-sport="all"><span class="sport-icon">🎯</span>All Sports</button>
-  <button class="sport-chip" onclick="setSport('afl')" data-sport="afl"><span class="sport-icon">🏉</span>AFL</button>
-  <button class="sport-chip" onclick="setSport('nrl')" data-sport="nrl"><span class="sport-icon">🏈</span>NRL</button>
-  <button class="sport-chip" onclick="setSport('nba')" data-sport="nba"><span class="sport-icon">🏀</span>NBA</button>
-  <button class="sport-chip" onclick="setSport('soccer')" data-sport="soccer"><span class="sport-icon">⚽</span>Soccer</button>
-  <button class="sport-chip" onclick="setSport('ufc')" data-sport="ufc"><span class="sport-icon">🥊</span>UFC/MMA</button>
-  <button class="sport-chip" onclick="setSport('boxing')" data-sport="boxing"><span class="sport-icon">🥋</span>Boxing</button>
-  <button class="sport-chip" onclick="setSport('greyhound')" data-sport="greyhound"><span class="sport-icon">🐕</span>Greyhounds</button>
-  <button class="sport-chip" onclick="setSport('horse')" data-sport="horse"><span class="sport-icon">🏇</span>Horse Racing</button>
+  <button class="sport-chip active" onclick="setSport('all')" data-sport="all">All Sports</button>
+  <button class="sport-chip" onclick="setSport('afl')" data-sport="afl">AFL</button>
+  <button class="sport-chip" onclick="setSport('nrl')" data-sport="nrl">NRL</button>
+  <button class="sport-chip" onclick="setSport('nba')" data-sport="nba">NBA</button>
+  <button class="sport-chip" onclick="setSport('soccer')" data-sport="soccer">Soccer</button>
+  <button class="sport-chip" onclick="setSport('ufc')" data-sport="ufc">UFC/MMA</button>
+  <button class="sport-chip" onclick="setSport('boxing')" data-sport="boxing">Boxing</button>
+  <button class="sport-chip" onclick="setSport('greyhound')" data-sport="greyhound">Greyhounds</button>
+  <button class="sport-chip" onclick="setSport('horse')" data-sport="horse">Horse Racing</button>
 </div>
 
 <main id="main" style="display:none">
@@ -177,8 +177,8 @@
 <!-- ══════════ AI TIPS PAGE ══════════ -->
 <div id="page-tips" class="page">
   <div class="section-header">
-    <div class="section-title">⚡ AI-POWERED TIPS</div>
-    <button class="ai-btn" onclick="openAIAnalysis()">🤖 Analyse a Match</button>
+    <div class="section-title">AI-POWERED TIPS</div>
+    <button class="ai-btn" onclick="openAIAnalysis()">Analyse a Match</button>
   </div>
   <!-- Match of the Day on tips page too -->
   <div id="motd-tips"></div>
@@ -188,7 +188,7 @@
 <!-- ══════════ UPCOMING PAGE ══════════ -->
 <div id="page-upcoming" class="page">
   <div class="section-header">
-    <div class="section-title">📅 UPCOMING MATCHES</div>
+    <div class="section-title">UPCOMING MATCHES</div>
   </div>
   <div class="filter-tabs" id="upcoming-filters"></div>
   <div class="card" id="upcoming-table"></div>
@@ -197,7 +197,7 @@
 <!-- ══════════ MY BETS PAGE ══════════ -->
 <div id="page-mybets" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-    <div class="section-title">📋 MY BET TRACKER</div>
+    <div class="section-title">MY BET TRACKER</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button data-testid="button-share-stats" onclick="shareMyStats()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📤 SHARE</button>
       <button onclick="exportBetsCSV()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">⬇ CSV</button>
@@ -242,7 +242,7 @@
 <!-- ══════════ LEADERBOARD PAGE ══════════ -->
 <div id="page-leaderboard" class="page">
   <div class="section-header">
-    <div class="section-title">🏆 LEADERBOARD</div>
+    <div class="section-title">LEADERBOARD</div>
   </div>
   <!-- Extras: weekly winner, streaks, records -->
   <div id="lb-extras" style="margin-bottom:20px"></div>
@@ -265,7 +265,7 @@
 <!-- ══════════ ANALYSIS PAGE ══════════ -->
 <div id="page-analysis" class="page">
   <div class="section-header">
-    <div class="section-title">📊 PERFORMANCE ANALYSIS</div>
+    <div class="section-title">PERFORMANCE ANALYSIS</div>
   </div>
   <div class="grid-2" id="analysis-grid"></div>
 </div>
@@ -351,7 +351,7 @@
           <div class="fg"><label>Venue</label><input type="text" id="ai-venue" placeholder="e.g. MCG"></div>
           <div class="fg"><label>Any extra context</label><input type="text" id="ai-context" placeholder="e.g. injury news, recent form…"></div>
         </div>
-        <button class="btn-primary" style="width:100%" onclick="runAIAnalysis()">🤖 ANALYSE THIS MATCH</button>
+        <button class="btn-primary" style="width:100%" onclick="runAIAnalysis()">ANALYSE THIS MATCH</button>
       </div>
       <!-- Result -->
       <div id="ai-result-area" style="display:none"></div>
@@ -490,19 +490,19 @@
 <!-- ── MOBILE BOTTOM NAV (5 items) ── -->
 <div id="bottom-nav">
   <button class="bnav-btn active" data-page="home" onclick="showPage('home');setActiveBottomNav(this)">
-    <span class="bnav-icon">🏠</span>Home
+    <span class="bnav-icon">⌂</span>Home
   </button>
   <button class="bnav-btn" data-page="tips" onclick="showPage('tips');setActiveBottomNav(this)">
-    <span class="bnav-icon">⚡</span>Tips
+    <span class="bnav-icon">★</span>Tips
   </button>
   <button class="bnav-btn" data-page="mybets" onclick="showPage('mybets');setActiveBottomNav(this)">
-    <span class="bnav-icon" style="position:relative">📋<span id="pending-badge" class="pending-badge" style="display:none"></span></span>My Bets
+    <span class="bnav-icon" style="position:relative">✦<span id="pending-badge" class="pending-badge" style="display:none"></span></span>My Bets
   </button>
   <button class="bnav-btn" data-page="leaderboard" onclick="showPage('leaderboard');setActiveBottomNav(this)">
-    <span class="bnav-icon">🏆</span>Board
+    <span class="bnav-icon">◈</span>Board
   </button>
   <button class="bnav-btn" onclick="openMoreSheet()">
-    <span class="bnav-icon">☰</span>More
+    <span class="bnav-icon">≡</span>More
   </button>
 </div>
 
