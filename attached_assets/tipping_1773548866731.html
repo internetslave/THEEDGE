@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#080b14">
+<title>The Tip — The Edge</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:       #0e1220;
+  --bg2:      #131726;
+  --bg3:      #181f2e;
+  --bg4:      #1e2638;
+  --card:     #161d2e;
+  --border:   #242f42;
+  --border2:  #2b3a52;
+  --text:     #f0f4ff;
+  --text2:    #c8d4e8;
+  --muted:    #7a8a9a;
+  --lime:     #b8ff3c;
+  --lime2:    #d4ff6e;
+  --lime-dim: rgba(184,255,60,.12);
+  --lime-glow:rgba(184,255,60,.06);
+  --red:      #ff3c5a;
+  --blue:     #3c8bff;
+  --amber:    #ffb03c;
+  --head:     'Barlow Condensed',sans-serif;
+  --body:     'Barlow',sans-serif;
+  --mono:     'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{
+  font-family:var(--body);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ── GRAIN TEXTURE OVERLAY ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.4;
+}
+
+/* ── HEADER ── */
+#tip-header{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(180deg,#0d1119 0%,var(--bg) 100%);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+}
+.tip-logo{display:flex;align-items:center;gap:14px;cursor:pointer}
+.tip-logo-mark{
+  width:38px;height:38px;
+  background:linear-gradient(135deg,#f0b429,#f97316);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-size:18px;font-weight:700;
+  color:#000;letter-spacing:-1px;
+}
+.tip-logo-name{
+  font-family:var(--head);font-size:22px;font-weight:700;
+  color:var(--text);letter-spacing:2px;text-transform:uppercase;
+}
+.tip-logo-sub{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:1px}
+.back-link{
+  display:flex;align-items:center;gap:6px;
+  background:transparent;border:1px solid var(--border);
+  border-radius:8px;padding:7px 14px;
+  font-family:var(--body);font-size:12px;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:all .15s;
+  text-decoration:none;
+}
+.back-link:hover{border-color:#f0b429;color:#f0b429}
+.tip-header-right{display:flex;align-items:center;gap:10px}
+#tip-user-badge{
+  display:none;align-items:center;gap:8px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:8px;padding:6px 12px;font-size:12px;
+}
+
+/* ── SPORT TICKER (top banner) ── */
+#sport-ticker{
+  background:var(--lime);
+  padding:6px 0;overflow:hidden;
+  position:relative;
+}
+.ticker-track{
+  display:flex;gap:0;
+  animation:ticker-scroll 30s linear infinite;
+  width:max-content;
+}
+.ticker-item{
+  font-family:var(--head);font-size:13px;font-weight:800;
+  color:#080b14;letter-spacing:2px;text-transform:uppercase;
+  padding:0 32px;white-space:nowrap;
+}
+.ticker-dot{color:rgba(8,11,20,.3);margin:0 8px}
+@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── NAV TABS ── */
+#tip-nav{
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  display:flex;align-items:center;gap:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+#tip-nav::-webkit-scrollbar{display:none}
+.tip-nav-btn{
+  font-family:var(--head);font-size:14px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);background:transparent;border:none;
+  padding:16px 20px;cursor:pointer;
+  border-bottom:3px solid transparent;
+  white-space:nowrap;transition:all .15s;
+  margin-bottom:-1px;
+}
+.tip-nav-btn:hover{color:var(--text2)}
+.tip-nav-btn.active{color:#f0b429;border-bottom-color:#f0b429}
+
+/* ── MAIN ── */
+#tip-main{
+  max-width:1100px;margin:0 auto;
+  padding:28px 24px 120px;
+  position:relative;z-index:1;
+}
+
+/* ── PAGE VISIBILITY ── */
+.tip-page{display:none}
+.tip-page.active{display:block}
+
+/* ── ROUND HEADER ── */
+.round-header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:24px;flex-wrap:wrap;gap:12px;
+}
+.round-label{
+  font-family:var(--head);font-size:11px;font-weight:700;
+  letter-spacing:3px;text-transform:uppercase;color:var(--lime);
+  margin-bottom:4px;
+}
+.round-title{
+  font-family:var(--head);font-size:42px;font-weight:900;
+  letter-spacing:-1px;line-height:1;
+  background:linear-gradient(135deg,var(--text),var(--text2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.round-meta{font-size:13px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+
+/* ── LOCKOUT BADGE ── */
+.lockout-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,176,60,.1);border:1px solid rgba(255,176,60,.3);
+  border-radius:6px;padding:8px 14px;
+  font-family:var(--mono);font-size:12px;color:var(--amber);font-weight:600;
+}
+.lockout-badge.locked{background:rgba(255,60,90,.1);border-color:rgba(255,60,90,.3);color:var(--red)}
+
+/* ── PROGRESS BAR ── */
+.tip-progress{margin-bottom:28px}
+.tip-progress-label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:8px;
+}
+.tip-progress-count{color:var(--lime);font-weight:600}
+.tip-progress-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.tip-progress-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .4s ease}
+
+/* ── FIXTURE CARD ── */
+.fixture-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  margin-bottom:12px;
+  overflow:hidden;
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;
+}
+.fixture-card.tipped{border-color:rgba(184,255,60,.3)}
+.fixture-card.tipped::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--lime);border-radius:2px 2px 0 0;
+}
+.fixture-card.locked-card{opacity:.7}
+.fixture-top{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  padding:20px 20px 16px;
+  gap:12px;
+}
+.fixture-team{display:flex;flex-direction:column}
+.fixture-team.away{align-items:flex-end;text-align:right}
+.team-name{
+  font-family:var(--head);font-size:20px;font-weight:800;
+  letter-spacing:.5px;line-height:1.1;
+}
+.team-record{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+.fixture-vs{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex-shrink:0;
+}
+.vs-text{
+  font-family:var(--head);font-size:11px;font-weight:800;
+  letter-spacing:3px;color:var(--muted);
+}
+.fixture-time{
+  font-family:var(--mono);font-size:10px;color:var(--muted);
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:4px;padding:3px 7px;white-space:nowrap;
+}
+.fixture-meta{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px 14px;
+}
+.fixture-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  border-radius:4px;padding:3px 8px;
+  font-size:10px;font-weight:700;letter-spacing:1px;
+  font-family:var(--head);text-transform:uppercase;
+}
+
+/* ── TIP BUTTONS ── */
+.tip-options{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;padding:0 20px 16px;
+}
+.tip-options.draw{grid-template-columns:1fr 1fr 1fr}
+.tip-btn{
+  background:var(--bg3);
+  border:1.5px solid var(--border2);
+  border-radius:10px;padding:12px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;transition:all .18s;
+  font-family:var(--body);
+}
+.tip-btn:hover{border-color:var(--lime);background:var(--lime-dim)}
+.tip-btn.selected{
+  background:var(--lime-dim);
+  border-color:var(--lime);
+  box-shadow:0 0 0 1px var(--lime) inset, 0 0 20px var(--lime-glow);
+}
+.tip-btn.selected .tip-btn-name{color:var(--lime)}
+.tip-btn-name{font-weight:700;font-size:14px;transition:color .15s;color:var(--text)}
+.tip-btn-odds{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tip-btn-check{font-size:16px;opacity:0;transition:opacity .15s}
+.tip-btn.selected .tip-btn-check{opacity:1}
+
+/* ── EXPANDABLE EXTRAS ── */
+.fixture-extras{
+  border-top:1px solid var(--border);
+  padding:14px 20px;
+  display:none;
+  background:var(--bg2);
+}
+.fixture-extras.open{display:block}
+.extras-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.extra-field label{
+  display:block;font-size:9px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;
+}
+.extra-input{
+  width:100%;background:var(--bg);
+  border:1.5px solid var(--border2);
+  border-radius:8px;padding:9px 12px;
+  font-family:var(--mono);font-size:14px;
+  color:var(--text);outline:none;transition:border-color .15s;
+}
+.extra-input:focus{border-color:var(--lime)}
+.banker-toggle{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg);border:1.5px solid var(--border2);
+  border-radius:8px;padding:9px 12px;cursor:pointer;transition:all .15s;
+  font-size:13px;font-weight:600;
+}
+.banker-toggle.on{
+  border-color:var(--amber);background:rgba(255,176,60,.08);color:var(--amber);
+}
+.confidence-row{display:flex;gap:4px;margin-top:6px}
+.conf-btn{
+  flex:1;background:var(--bg);border:1px solid var(--border2);
+  border-radius:6px;padding:7px 2px;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--muted);cursor:pointer;text-align:center;transition:all .15s;
+}
+.conf-btn:hover{border-color:var(--lime);color:var(--lime)}
+.conf-btn.selected{background:var(--lime);border-color:var(--lime);color:#080b14;font-weight:700}
+.extras-toggle{
+  width:100%;background:transparent;border:none;
+  border-top:1px solid var(--border);
+  color:var(--muted);font-family:var(--head);font-size:11px;
+  font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  padding:10px;cursor:pointer;transition:color .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.extras-toggle:hover{color:var(--text2)}
+
+/* ── SUBMIT BAR ── */
+#submit-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(8,11,20,.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  padding:12px 24px max(12px,env(safe-area-inset-bottom));
+  z-index:200;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+}
+.submit-info{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.submit-count{color:var(--lime);font-weight:700;font-size:16px}
+.submit-btn{
+  background:var(--lime);color:#080b14;
+  border:none;border-radius:10px;
+  padding:12px 28px;
+  font-family:var(--head);font-size:16px;font-weight:900;
+  letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;flex-shrink:0;
+}
+.submit-btn:hover{background:var(--lime2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(184,255,60,.3)}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── LEADERBOARD ── */
+.lb-table{width:100%;border-collapse:collapse}
+.lb-table th{
+  font-family:var(--head);font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  text-align:left;padding:8px 16px;border-bottom:1px solid var(--border);
+}
+.lb-table th.right{text-align:right}
+.lb-row{border-bottom:1px solid var(--border);transition:background .12s}
+.lb-row:hover{background:var(--bg3)}
+.lb-row:last-child{border-bottom:none}
+.lb-row td{padding:14px 16px;vertical-align:middle}
+.lb-pos{
+  font-family:var(--head);font-size:22px;font-weight:900;
+  color:var(--muted);min-width:44px;
+}
+.lb-pos.gold{color:#ffd700}
+.lb-pos.silver{color:#c0c8d8}
+.lb-pos.bronze{color:#cd7f32}
+.lb-avatar{
+  width:40px;height:40px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  flex-shrink:0;
+}
+.lb-name{font-family:var(--head);font-size:17px;font-weight:700;letter-spacing:.5px}
+.lb-pts{
+  font-family:var(--mono);font-size:20px;font-weight:600;
+  color:var(--lime);text-align:right;
+}
+.lb-stat{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+.lb-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--lime-dim);border:1px solid rgba(184,255,60,.25);
+  border-radius:4px;padding:2px 7px;
+  font-size:10px;font-weight:700;color:var(--lime);
+  font-family:var(--head);letter-spacing:1px;margin-left:8px;
+}
+
+/* ── COMPS ── */
+.comp-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;margin-bottom:16px;
+}
+.comp-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+}
+.comp-name{font-family:var(--head);font-size:20px;font-weight:800;letter-spacing:.5px}
+.comp-code{
+  font-family:var(--mono);font-size:12px;
+  background:var(--lime-dim);border:1px solid rgba(184,255,60,.25);
+  border-radius:6px;padding:4px 10px;color:var(--lime);font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.comp-code:hover{background:rgba(184,255,60,.2)}
+.comp-mini-lb{padding:12px 20px}
+.comp-mini-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.comp-mini-row:last-child{border-bottom:none}
+
+/* ── FORM INPUTS ── */
+.tip-field{margin-bottom:16px}
+.tip-label{
+  display:block;font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;
+  font-family:var(--head);
+}
+.tip-input{
+  width:100%;background:var(--bg3);
+  border:1.5px solid var(--border2);border-radius:10px;
+  padding:12px 16px;font-family:var(--body);font-size:14px;
+  color:var(--text);outline:none;transition:border-color .15s;
+}
+.tip-input:focus{border-color:var(--lime)}
+.tip-btn-primary{
+  width:100%;background:var(--lime);color:#080b14;
+  border:none;border-radius:10px;padding:14px;
+  font-family:var(--head);font-size:16px;font-weight:900;
+  letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;
+}
+.tip-btn-primary:hover{background:var(--lime2);transform:translateY(-1px)}
+.tip-btn-secondary{
+  background:var(--bg3);color:var(--text2);
+  border:1.5px solid var(--border2);border-radius:10px;
+  padding:11px 20px;font-family:var(--head);font-size:13px;
+  font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;
+}
+.tip-btn-secondary:hover{border-color:var(--lime);color:var(--lime)}
+
+/* ── ROUND RESULTS ── */
+.result-fixture{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px 20px;margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+}
+.result-teams{font-family:var(--head);font-size:17px;font-weight:700;letter-spacing:.5px}
+.result-winner{color:var(--lime);font-size:13px;font-family:var(--mono);margin-top:3px}
+.result-pick-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;
+  font-family:var(--head);letter-spacing:1px;
+}
+.result-pick-tag.correct{background:rgba(184,255,60,.12);border:1px solid rgba(184,255,60,.3);color:var(--lime)}
+.result-pick-tag.wrong{background:rgba(255,60,90,.1);border:1px solid rgba(255,60,90,.3);color:var(--red)}
+.result-pick-tag.pending{background:var(--bg3);border:1px solid var(--border2);color:var(--muted)}
+.result-pts{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--lime);text-align:right}
+
+/* ── SECTION HEADING ── */
+.section-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:20px;flex-wrap:wrap;gap:8px;
+}
+.section-title{
+  font-family:var(--head);font-size:28px;font-weight:900;
+  letter-spacing:1px;text-transform:uppercase;
+}
+.section-sub{font-size:13px;color:var(--muted)}
+
+/* ── EMPTY STATE ── */
+.tip-empty{
+  text-align:center;padding:60px 24px;color:var(--muted);
+}
+.tip-empty-icon{font-size:48px;margin-bottom:16px;opacity:.5}
+.tip-empty-title{font-family:var(--head);font-size:22px;font-weight:800;letter-spacing:1px;margin-bottom:8px;color:var(--text2)}
+.tip-empty-sub{font-size:14px;line-height:1.6}
+
+/* ── TOAST ── */
+#tip-toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--lime);color:#080b14;
+  border-radius:8px;padding:10px 20px;
+  font-family:var(--head);font-size:14px;font-weight:800;letter-spacing:1px;
+  opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap;
+}
+#tip-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── AUTH OVERLAY ── */
+#tip-auth{
+  position:fixed;inset:0;
+  background:rgba(8,11,20,.97);
+  display:flex;align-items:center;justify-content:center;
+  z-index:500;padding:24px;
+}
+.auth-box{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:20px;padding:36px;width:100%;max-width:380px;
+}
+.auth-logo{
+  font-family:var(--head);font-size:32px;font-weight:900;
+  letter-spacing:3px;color:var(--lime);text-align:center;margin-bottom:4px;
+}
+.auth-sub{text-align:center;font-size:12px;color:var(--muted);letter-spacing:2px;margin-bottom:32px}
+.auth-tab-row{display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.auth-tab{
+  flex:1;background:transparent;border:none;
+  font-family:var(--head);font-size:14px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);padding:10px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+}
+.auth-tab.active{color:var(--lime);border-bottom-color:var(--lime)}
+.auth-error{
+  background:rgba(255,60,90,.1);border:1px solid rgba(255,60,90,.3);
+  border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);
+  margin-bottom:16px;display:none;
+}
+
+/* ── SPORT COLOUR BARS ── */
+.sport-afl   {background:rgba(0,48,135,.3);border-color:rgba(0,48,135,.5)}
+.sport-nrl   {background:rgba(0,104,55,.3);border-color:rgba(0,104,55,.5)}
+.sport-epl   {background:rgba(55,0,160,.3);border-color:rgba(55,0,160,.5)}
+.sport-origin{background:rgba(255,140,0,.2);border-color:rgba(255,140,0,.4)}
+
+/* ── GRID ── */
+.tip-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tip-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+/* ── STAT CARDS ── */
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px 20px;
+}
+.stat-card-val{
+  font-family:var(--head);font-size:36px;font-weight:900;
+  color:var(--lime);line-height:1;margin-bottom:4px;
+}
+.stat-card-label{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;font-weight:600}
+
+/* ── MOBILE ── */
+@media(max-width:640px){
+  #tip-main{padding:20px 14px 100px}
+  .round-title{font-size:30px}
+  .extras-grid{grid-template-columns:1fr 1fr}
+  .tip-grid-2{grid-template-columns:1fr}
+  .tip-grid-3{grid-template-columns:1fr 1fr}
+  .lb-table .hide-mobile{display:none}
+  #submit-bar{padding:10px 16px max(10px,env(safe-area-inset-bottom))}
+}
+/* ── ROUND RESULT NOTIFICATION BANNER ── */
+#round-result-banner{
+  display:none;position:sticky;top:0;z-index:200;
+  background:linear-gradient(90deg,rgba(184,255,60,.12),rgba(184,255,60,.06));
+  border-bottom:1px solid rgba(184,255,60,.25);
+  padding:10px 16px;
+  animation:slideDown .35s cubic-bezier(.22,1,.36,1);
+}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.rr-banner-inner{display:flex;align-items:flex-start;gap:12px;max-width:760px;margin:0 auto}
+.rr-banner-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.rr-banner-body{flex:1;min-width:0}
+.rr-banner-title{font-family:var(--head);font-weight:800;font-size:15px;letter-spacing:.5px;color:var(--lime)}
+.rr-banner-sub{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.4}
+.rr-banner-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.rr-banner-btn{font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:.5px;padding:5px 12px;border-radius:5px;cursor:pointer;border:none;transition:opacity .15s}
+.rr-banner-btn.primary{background:var(--lime);color:#080b14}
+.rr-banner-btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border2)}
+.rr-banner-btn:hover{opacity:.8}
+.rr-banner-close{font-size:18px;color:var(--muted);cursor:pointer;padding:2px 6px;background:none;border:none;flex-shrink:0;align-self:flex-start}
+.rr-banner-close:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH OVERLAY ── -->
+<div id="tip-auth">
+  <div class="auth-box">
+    <div class="auth-logo">THE TIP</div>
+    <div class="auth-sub">THE EDGE TIPPING COMPETITION</div>
+    <div class="auth-tab-row">
+      <button class="auth-tab active" onclick="showAuthTab('in',this)">Sign In</button>
+      <button class="auth-tab" onclick="showAuthTab('up',this)">Join</button>
+    </div>
+    <div id="tip-auth-error" class="auth-error"></div>
+    <div id="auth-in">
+      <div class="tip-field"><label class="tip-label">Username</label><input class="tip-input" id="ai-user" placeholder="your username" autocapitalize="none"></div>
+      <div class="tip-field"><label class="tip-label">PIN</label><input class="tip-input" type="password" id="ai-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <button class="tip-btn-primary" onclick="doTipSignIn()">SIGN IN →</button>
+    </div>
+    <div id="auth-up" style="display:none">
+      <div class="tip-field"><label class="tip-label">Username</label><input class="tip-input" id="au-user" placeholder="e.g. SharpMate" autocapitalize="none"></div>
+      <div class="tip-field"><label class="tip-label">4-Digit PIN</label><input class="tip-input" type="password" id="au-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <div class="tip-field"><label class="tip-label">Confirm PIN</label><input class="tip-input" type="password" id="au-pin2" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+      <button class="tip-btn-primary" onclick="doTipSignUp()">CREATE ACCOUNT →</button>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <a onclick="window.location.href='/'" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:none">← Already have a The Edge account? Same login works here</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── SPORT TICKER ── -->
+<div id="sport-ticker">
+  <div class="ticker-track" id="ticker-track">
+    <span class="ticker-item">🏉 AFL <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🏈 NRL <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">⚽ Premier League <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🔥 State of Origin <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🎯 Tip Smart. Win Big. <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🏉 AFL <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🏈 NRL <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">⚽ Premier League <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🔥 State of Origin <span class="ticker-dot">·</span></span>
+    <span class="ticker-item">🎯 Tip Smart. Win Big. <span class="ticker-dot">·</span></span>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<div id="tip-header">
+  <div class="tip-logo" onclick="window.location.href='/tipping'">
+    <div class="tip-logo-mark">TE</div>
+    <div>
+      <div class="tip-logo-name">The Tip</div>
+      <div class="tip-logo-sub">Tipping Competition</div>
+    </div>
+  </div>
+  <div class="tip-header-right">
+    <div id="tip-user-badge"></div>
+    <a href="/" class="back-link">← The Edge</a>
+  </div>
+</div>
+
+<!-- ── NAV ── -->
+<div id="tip-nav">
+  <button class="tip-nav-btn active" onclick="showTipPage('tips',this)">📋 My Tips</button>
+  <button class="tip-nav-btn" onclick="showTipPage('results',this)">✅ Results</button>
+  <button class="tip-nav-btn" onclick="showTipPage('leaderboard',this)">🏆 Leaderboard</button>
+  <button class="tip-nav-btn" onclick="showTipPage('comps',this)">👥 My Comps</button>
+</div>
+
+<!-- ── ROUND RESULT NOTIFICATION BANNER ── -->
+<div id="round-result-banner">
+  <div class="rr-banner-inner">
+    <div class="rr-banner-icon">🏆</div>
+    <div class="rr-banner-body">
+      <div class="rr-banner-title" id="rr-banner-title">Round Results In!</div>
+      <div class="rr-banner-sub" id="rr-banner-sub"></div>
+      <div class="rr-banner-actions">
+        <button class="rr-banner-btn primary" id="rr-banner-view-btn" onclick="viewBannerResults()">VIEW MY RESULTS →</button>
+        <button class="rr-banner-btn ghost" onclick="dismissResultBanner()">Dismiss</button>
+      </div>
+    </div>
+    <button class="rr-banner-close" onclick="dismissResultBanner()">✕</button>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="tip-main">
+
+  <!-- ══ MY TIPS PAGE ══ -->
+  <div id="tip-page-tips" class="tip-page active">
+    <div class="round-header">
+      <div>
+        <div class="round-label">Current Round</div>
+        <div class="round-title" id="tips-round-title">Loading...</div>
+        <div class="round-meta" id="tips-round-meta"></div>
+      </div>
+      <div id="tips-lockout-badge"></div>
+    </div>
+
+    <div class="tip-progress">
+      <div class="tip-progress-label">
+        <span>Tips submitted</span>
+        <span class="tip-progress-count"><span id="progress-done">0</span> / <span id="progress-total">0</span></span>
+      </div>
+      <div class="tip-progress-track">
+        <div class="tip-progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div id="fixtures-list"></div>
+    <div id="fixtures-empty" class="tip-empty" style="display:none">
+      <div class="tip-empty-icon">📋</div>
+      <div class="tip-empty-title">No Active Round</div>
+      <div class="tip-empty-sub">The next round's fixtures haven't been posted yet.<br>Check back closer to game day.</div>
+    </div>
+  </div>
+
+  <!-- ══ RESULTS PAGE ══ -->
+  <div id="tip-page-results" class="tip-page">
+    <div class="section-head">
+      <div class="section-title">Round Results</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="results-round-select" class="tip-input" style="width:auto;padding:8px 14px;font-size:13px" onchange="loadResults()">
+          <option value="">Select round...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- My scores summary -->
+    <div id="results-my-summary" style="display:none;margin-bottom:24px">
+      <div class="tip-grid-3" style="margin-bottom:0">
+        <div class="stat-card">
+          <div class="stat-card-val" id="res-pts">—</div>
+          <div class="stat-card-label">Points</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-val" id="res-correct">—</div>
+          <div class="stat-card-label">Correct</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-val" id="res-rate">—</div>
+          <div class="stat-card-label">Hit Rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="results-list"></div>
+    <div id="results-empty" class="tip-empty" style="display:none">
+      <div class="tip-empty-icon">⏳</div>
+      <div class="tip-empty-title">No Results Yet</div>
+      <div class="tip-empty-sub">Select a completed round to see results.</div>
+    </div>
+  </div>
+
+  <!-- ══ LEADERBOARD PAGE ══ -->
+  <div id="tip-page-leaderboard" class="tip-page">
+    <div class="section-head">
+      <div class="section-title">Global Leaderboard</div>
+      <div class="section-sub" id="lb-round-label"></div>
+    </div>
+    <div id="lb-my-stats" style="display:none;margin-bottom:24px">
+      <div class="tip-grid-3">
+        <div class="stat-card">
+          <div class="stat-card-val" id="lb-my-pts">—</div>
+          <div class="stat-card-label">My Points</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-val" id="lb-my-rank">#—</div>
+          <div class="stat-card-label">My Rank</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-val" id="lb-my-wr">—%</div>
+          <div class="stat-card-label">Hit Rate</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th></th>
+            <th>Tipper</th>
+            <th class="right">Points</th>
+            <th class="right hide-mobile">Correct</th>
+            <th class="right hide-mobile">Hit %</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body"></tbody>
+      </table>
+    </div>
+    <div id="lb-empty" class="tip-empty" style="display:none">
+      <div class="tip-empty-icon">🏆</div>
+      <div class="tip-empty-title">Leaderboard Empty</div>
+      <div class="tip-empty-sub">No tips have been submitted yet. Be the first!</div>
+    </div>
+  </div>
+
+  <!-- ══ COMPS PAGE ══ -->
+  <div id="tip-page-comps" class="tip-page">
+    <div class="section-head">
+      <div class="section-title">My Comps</div>
+    </div>
+
+    <!-- Create / Join -->
+    <div class="tip-grid-2" style="margin-bottom:28px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+        <div style="font-family:var(--head);font-size:16px;font-weight:800;letter-spacing:1px;margin-bottom:14px;color:var(--lime)">CREATE A COMP</div>
+        <div class="tip-field"><label class="tip-label">Comp Name</label><input class="tip-input" id="comp-name" placeholder="e.g. The Boys 2026"></div>
+        <div class="tip-field">
+          <label class="tip-label">Sport</label>
+          <select class="tip-input" id="comp-sport">
+            <option value="all">All Sports</option>
+            <option value="AFL">AFL Only</option>
+            <option value="NRL">NRL Only</option>
+            <option value="EPL">EPL Only</option>
+          </select>
+        </div>
+        <button class="tip-btn-primary" onclick="createComp()" style="margin-top:4px">CREATE →</button>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+        <div style="font-family:var(--head);font-size:16px;font-weight:800;letter-spacing:1px;margin-bottom:14px;color:var(--lime)">JOIN A COMP</div>
+        <div class="tip-field"><label class="tip-label">Invite Code</label><input class="tip-input" id="join-code" placeholder="e.g. A3F9C2" autocapitalize="characters" style="letter-spacing:3px;font-family:var(--mono);font-size:18px"></div>
+        <button class="tip-btn-primary" onclick="joinComp()" style="margin-top:22px">JOIN →</button>
+      </div>
+    </div>
+
+    <div id="comps-list"></div>
+    <div id="comps-empty" class="tip-empty" style="display:none">
+      <div class="tip-empty-icon">👥</div>
+      <div class="tip-empty-title">No Comps Yet</div>
+      <div class="tip-empty-sub" style="margin-bottom:24px">Create a comp and share the code with your mates,<br>or join one with an invite code.</div>
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:20px;text-align:left;max-width:420px;margin:0 auto">
+        <div style="font-family:var(--head);font-size:15px;font-weight:800;letter-spacing:1px;color:var(--lime);margin-bottom:14px">HOW TIPPING WORKS</div>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:var(--text2);line-height:1.5">
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:18px">1️⃣</span><span>Create or join a comp with your mates using an invite code</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:18px">2️⃣</span><span>Pick winners for each fixture before the round lockout time</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:18px">3️⃣</span><span>Set confidence levels and use a banker pick to double your points</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:18px">4️⃣</span><span>Climb the leaderboard — correct tips earn points, margin bonuses stack up</span></div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+          <div style="font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px">SCORING</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
+            <div>✅ Correct tip: <span style="color:var(--lime);font-family:var(--mono)">1 pt</span></div>
+            <div>📊 Confidence bonus: <span style="color:var(--lime);font-family:var(--mono)">up to 5 pts</span></div>
+            <div>🎯 Exact margin: <span style="color:var(--lime);font-family:var(--mono)">+5 pts</span></div>
+            <div>⭐ Banker pick: <span style="color:var(--lime);font-family:var(--mono)">2x multiplier</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ── SUBMIT BAR ── -->
+<div id="submit-bar" style="display:none">
+  <div>
+    <div class="submit-count"><span id="sb-count">0</span> tips locked in</div>
+    <div class="submit-info">Submit before lockout to be counted</div>
+  </div>
+  <button class="submit-btn" id="submit-btn-el" onclick="submitTips()">SUBMIT TIPS</button>
+</div>
+
+<div id="tip-toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let tipToken    = localStorage.getItem('edgeiq-token-v2');
+let currentUser = null;
+let fixtures    = [];
+let myTips      = {}; // { fixtureId: { tip, margin, confidence, banker } }
+let activeRound = null;
+let isLocked    = false;
+let roundLockout = null;
+
+const SPORT_BADGES = {
+  AFL:    { emoji:'🏉', cls:'sport-afl',    label:'AFL'    },
+  NRL:    { emoji:'🏈', cls:'sport-nrl',    label:'NRL'    },
+  EPL:    { emoji:'⚽', cls:'sport-epl',    label:'EPL'    },
+  Origin: { emoji:'🔥', cls:'sport-origin', label:'State of Origin' },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════
+function showAuthTab(tab, btn) {
+  document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('auth-in').style.display = tab === 'in' ? 'block' : 'none';
+  document.getElementById('auth-up').style.display = tab === 'up' ? 'block' : 'none';
+}
+
+async function doTipSignIn() {
+  const user = document.getElementById('ai-user').value.trim();
+  const pin  = document.getElementById('ai-pin').value.trim();
+  if (!user || !pin) return showAuthError('Enter username and PIN');
+  try {
+    const r = await fetch('/api/auth/signin', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user, pin })
+    });
+    const d = await r.json();
+    if (!d.token) return showAuthError(d.error || 'Sign in failed');
+    tipToken = d.token;
+    localStorage.setItem('edgeiq-token-v2', tipToken);
+    currentUser = d.profile;
+    onLoggedIn();
+  } catch { showAuthError('Connection error — try again'); }
+}
+
+async function doTipSignUp() {
+  const user = document.getElementById('au-user').value.trim();
+  const pin  = document.getElementById('au-pin').value.trim();
+  const pin2 = document.getElementById('au-pin2').value.trim();
+  if (!user || !pin) return showAuthError('Fill in all fields');
+  if (pin !== pin2)  return showAuthError('PINs don\'t match');
+  if (pin.length !== 4 || !/^\d+$/.test(pin)) return showAuthError('PIN must be exactly 4 digits');
+  try {
+    const r = await fetch('/api/auth/signup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: user, pin, sport: 'AFL' })
+    });
+    const d = await r.json();
+    if (!d.token) return showAuthError(d.error || 'Sign up failed');
+    tipToken = d.token;
+    localStorage.setItem('edgeiq-token-v2', tipToken);
+    currentUser = d.profile;
+    onLoggedIn();
+  } catch { showAuthError('Connection error — try again'); }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('tip-auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function checkAuth() {
+  if (!tipToken) return;
+  try {
+    const r = await fetch('/api/auth/me', { headers: { 'x-session-token': tipToken } });
+    if (!r.ok) return;
+    const d = await r.json();
+    // /api/auth/me returns { username, avatar, color, sport } directly — no wrapper
+    if (d.username) {
+      currentUser = { username: d.username, avatar: d.avatar, color: d.color, sport: d.sport };
+      onLoggedIn();
+    }
+  } catch {}
+}
+
+function onLoggedIn() {
+  document.getElementById('tip-auth').style.display = 'none';
+  const badge = document.getElementById('tip-user-badge');
+  badge.style.display = 'flex';
+  badge.innerHTML = `
+    <span style="font-size:18px">${currentUser.avatar}</span>
+    <span style="font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:.5px">${currentUser.username.toUpperCase()}</span>`;
+  loadAll();
+  // Check for unseen round results after a short delay so loadAll can complete first
+  setTimeout(checkForNewResults, 2500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+function showTipPage(page, btn) {
+  document.querySelectorAll('.tip-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tip-page-' + page).classList.add('active');
+  document.querySelectorAll('.tip-nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('submit-bar').style.display = page === 'tips' && !isLocked ? 'flex' : 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (page === 'leaderboard') loadLeaderboard();
+  if (page === 'comps') loadComps();
+  if (page === 'results') loadResultsRounds();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOAD ALL
+// ═══════════════════════════════════════════════════════════════════
+async function loadAll() {
+  await Promise.all([loadFixtures(), loadMyTips()]);
+}
+
+async function loadFixtures() {
+  try {
+    const r = await fetch('/api/tipping/fixtures');
+    console.log('[fixtures] status:', r.status);
+    const d = await r.json();
+    console.log('[fixtures] response:', JSON.stringify(d));
+    activeRound   = d.round;
+    fixtures      = d.fixtures || [];
+    roundLockout  = d.lockout  || null;
+    renderFixtures();
+  } catch(e) {
+    console.error('[fixtures] failed:', e);
+    renderFixtures();
+  }
+}
+
+async function loadMyTips() {
+  if (!tipToken) return;
+  try {
+    const r = await fetch('/api/tipping/my-tips', { headers: { 'x-session-token': tipToken } });
+    const d = await r.json();
+    myTips = d.tips || {};
+    updateProgress();
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER FIXTURES
+// ═══════════════════════════════════════════════════════════════════
+function renderFixtures() {
+  const list  = document.getElementById('fixtures-list');
+  const empty = document.getElementById('fixtures-empty');
+
+  if (!activeRound || !fixtures.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    document.getElementById('tips-round-title').textContent = 'No Active Round';
+    document.getElementById('submit-bar').style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  document.getElementById('tips-round-title').textContent = activeRound;
+  document.getElementById('tips-round-meta').textContent = `${fixtures.length} matches to tip`;
+
+  // Check lockout
+  const lockoutTime = roundLockout;
+  isLocked = lockoutTime ? new Date() > new Date(lockoutTime) : false;
+  const lockBadge = document.getElementById('tips-lockout-badge');
+  if (lockoutTime) {
+    const d = new Date(lockoutTime);
+    const fmt = d.toLocaleDateString('en-AU',{weekday:'short',month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+    lockBadge.innerHTML = isLocked
+      ? `<div class="lockout-badge locked">🔒 LOCKED</div>`
+      : `<div class="lockout-badge">⏰ LOCKOUT ${fmt}</div>`;
+  }
+
+  document.getElementById('submit-bar').style.display = isLocked ? 'none' : 'flex';
+
+  list.innerHTML = fixtures.map(f => renderFixtureCard(f)).join('');
+  updateProgress();
+}
+
+function renderFixtureCard(f) {
+  const saved   = myTips[f.id] || {};
+  const tipped  = !!saved.tip;
+  const sb      = SPORT_BADGES[f.sport] || SPORT_BADGES.AFL;
+  const hasDraw = f.draw === true;
+  const lock    = isLocked ? 'locked-card' : '';
+
+  const optBtns = [
+    { key: f.home, label: f.home, odds: f.homeOdds },
+    ...(hasDraw ? [{ key: 'Draw', label: 'Draw', odds: f.drawOdds }] : []),
+    { key: f.away, label: f.away, odds: f.awayOdds },
+  ];
+
+  const confValues = [1,2,3,4,5,6,7,8];
+
+  return `<div class="fixture-card ${tipped ? 'tipped' : ''} ${lock}" id="fc-${f.id}">
+    <div class="fixture-top">
+      <div class="fixture-team">
+        <div class="team-name">${f.home}</div>
+        <div class="team-record">${f.homeRecord || ''}</div>
+      </div>
+      <div class="fixture-vs">
+        <div class="fixture-time">${f.time || ''}</div>
+        <div class="vs-text">VS</div>
+        <div class="fixture-badge ${sb.cls}">${sb.emoji} ${sb.label}</div>
+      </div>
+      <div class="fixture-team away">
+        <div class="team-name">${f.away}</div>
+        <div class="team-record">${f.awayRecord || ''}</div>
+      </div>
+    </div>
+    <div class="fixture-meta">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">📍 ${f.venue || ''}</span>
+      ${tipped ? `<span style="font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;color:var(--lime)">✓ TIPPED: ${saved.tip}${saved.banker?' 🌟 BANKER':''}</span>` : ''}
+    </div>
+    ${!isLocked ? `
+    <div class="tip-options ${hasDraw ? 'draw' : ''}">
+      ${optBtns.map(o => `
+        <button class="tip-btn${saved.tip === o.key ? ' selected' : ''}" onclick="selectTip('${f.id}','${o.key}')">
+          <div class="tip-btn-check">✓</div>
+          <div class="tip-btn-name">${o.label}</div>
+          ${o.odds ? `<div class="tip-btn-odds">${o.odds}x</div>` : ''}
+        </button>`).join('')}
+    </div>
+    <button class="extras-toggle" onclick="toggleExtras('${f.id}')">
+      <span id="extras-arrow-${f.id}">▸</span> MARGIN · CONFIDENCE · BANKER
+    </button>
+    <div class="fixture-extras" id="extras-${f.id}">
+      <div class="extras-grid">
+        <div class="extra-field">
+          <label>Margin Tip (pts)</label>
+          <input class="extra-input" type="number" id="margin-${f.id}" placeholder="e.g. 18"
+            value="${saved.margin != null ? saved.margin : ''}"
+            onchange="updateExtra('${f.id}','margin',this.value)">
+        </div>
+        <div class="extra-field">
+          <label>Banker Pick 🌟</label>
+          <button class="banker-toggle${saved.banker ? ' on' : ''}" id="banker-${f.id}" onclick="toggleBanker('${f.id}')">
+            <span>${saved.banker ? '🌟' : '☆'}</span> ${saved.banker ? 'BANKER ON' : 'Set as Banker'}
+          </button>
+        </div>
+        <div class="extra-field" style="grid-column:1/-1">
+          <label>Confidence (1 = low, 8 = lock it in)</label>
+          <div class="confidence-row">
+            ${confValues.map(n => `<button class="conf-btn${saved.confidence === n ? ' selected' : ''}" onclick="updateExtra('${f.id}','confidence',${n})">${n}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>` : `
+    <div style="padding:0 20px 16px">
+      ${saved.tip
+        ? `<div style="background:var(--lime-dim);border:1px solid rgba(184,255,60,.2);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-family:var(--head);font-size:15px;font-weight:800;color:var(--lime)">YOUR TIP: ${saved.tip}</div>
+            ${saved.banker ? '<div style="font-family:var(--head);font-size:12px;color:var(--amber)">🌟 BANKER</div>' : ''}
+            ${saved.confidence ? `<div style="font-family:var(--mono);font-size:12px;color:var(--muted)">CONF: ${saved.confidence}/8</div>` : ''}
+          </div>`
+        : `<div style="background:rgba(255,60,90,.08);border:1px solid rgba(255,60,90,.2);border-radius:8px;padding:12px 16px;font-family:var(--head);font-size:13px;color:var(--red)">⚠️ NO TIP SUBMITTED — ROUND LOCKED</div>`
+      }
+    </div>`}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIP INTERACTIONS
+// ═══════════════════════════════════════════════════════════════════
+function selectTip(fixtureId, team) {
+  if (isLocked) return;
+  if (!myTips[fixtureId]) myTips[fixtureId] = {};
+  myTips[fixtureId].tip = team;
+  // Re-render just this card
+  const card = document.getElementById('fc-' + fixtureId);
+  const f    = fixtures.find(x => x.id === fixtureId);
+  if (card && f) card.outerHTML = renderFixtureCard(f);
+  updateProgress();
+}
+
+function toggleExtras(fixtureId) {
+  const el    = document.getElementById('extras-' + fixtureId);
+  const arrow = document.getElementById('extras-arrow-' + fixtureId);
+  const open  = el.classList.toggle('open');
+  if (arrow) arrow.textContent = open ? '▾' : '▸';
+}
+
+function updateExtra(fixtureId, key, value) {
+  if (!myTips[fixtureId]) myTips[fixtureId] = {};
+  if (key === 'margin')     myTips[fixtureId].margin     = parseInt(value) || null;
+  if (key === 'confidence') {
+    myTips[fixtureId].confidence = parseInt(value);
+    // Update conf buttons
+    document.querySelectorAll(`#extras-${fixtureId} .conf-btn`).forEach((b, i) => {
+      b.classList.toggle('selected', i + 1 === parseInt(value));
+    });
+  }
+}
+
+function toggleBanker(fixtureId) {
+  if (!myTips[fixtureId]) myTips[fixtureId] = {};
+  myTips[fixtureId].banker = !myTips[fixtureId].banker;
+  const btn = document.getElementById('banker-' + fixtureId);
+  if (btn) {
+    btn.classList.toggle('on', myTips[fixtureId].banker);
+    btn.innerHTML = `<span>${myTips[fixtureId].banker ? '🌟' : '☆'}</span> ${myTips[fixtureId].banker ? 'BANKER ON' : 'Set as Banker'}`;
+  }
+}
+
+function updateProgress() {
+  const total  = fixtures.length;
+  const done   = fixtures.filter(f => myTips[f.id]?.tip).length;
+  const pct    = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progress-done').textContent  = done;
+  document.getElementById('progress-total').textContent = total;
+  document.getElementById('progress-fill').style.width  = pct + '%';
+  document.getElementById('sb-count').textContent = done;
+  const btn = document.getElementById('submit-btn-el');
+  // Only disable if zero tips AND fixtures exist — always clickable if no fixtures so user gets a message
+  if (btn) btn.disabled = total > 0 && done === 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUBMIT
+// ═══════════════════════════════════════════════════════════════════
+async function submitTips() {
+  console.log('[submit] clicked. tipToken:', !!tipToken, '| myTips:', JSON.stringify(myTips));
+  if (!tipToken) { showToast('⚠️ Not logged in'); return; }
+
+  const tipsToSend = {};
+  for (const [id, t] of Object.entries(myTips)) {
+    if (t.tip) tipsToSend[id] = t;
+  }
+  console.log('[submit] tipsToSend count:', Object.keys(tipsToSend).length);
+  if (!Object.keys(tipsToSend).length) { showToast('⚠️ Pick at least one team first'); return; }
+
+  const btn = document.getElementById('submit-btn-el');
+  if (btn) { btn.disabled = true; btn.textContent = 'SUBMITTING...'; }
+
+  try {
+    const r = await fetch('/api/tipping/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': tipToken },
+      body: JSON.stringify({ tips: tipsToSend })
+    });
+    console.log('[submit] status:', r.status);
+    const d = await r.json();
+    console.log('[submit] response:', JSON.stringify(d));
+    if (d.success) {
+      showToast('✓ ' + d.tipsCount + ' tips submitted!');
+      await loadMyTips();
+      renderFixtures();
+    } else {
+      showToast('⚠️ ' + (d.error || 'Submit failed'));
+    }
+  } catch(e) {
+    console.error('[submit] error:', e);
+    showToast('⚠️ Connection error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'SUBMIT TIPS'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════════════════════════
+async function loadLeaderboard() {
+  try {
+    const r = await fetch('/api/tipping/leaderboard');
+    const d = await r.json();
+    const board = d.board || [];
+    const body  = document.getElementById('lb-body');
+    const empty = document.getElementById('lb-empty');
+
+    if (!board.length) {
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    if (d.activeRound) document.getElementById('lb-round-label').textContent = d.activeRound;
+
+    // Find my position
+    const myIdx = board.findIndex(e => e.username === currentUser?.username);
+    if (myIdx >= 0) {
+      const me = board[myIdx];
+      document.getElementById('lb-my-stats').style.display = 'block';
+      document.getElementById('lb-my-pts').textContent  = me.total;
+      document.getElementById('lb-my-rank').textContent = '#' + (myIdx + 1);
+      document.getElementById('lb-my-wr').textContent   = me.winRate + '%';
+    }
+
+    const posStyles = ['gold','silver','bronze'];
+    body.innerHTML = board.map((e, i) => `
+      <tr class="lb-row">
+        <td><div class="lb-pos ${posStyles[i] || ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : '#'+(i+1)}</div></td>
+        <td><div class="lb-avatar" style="background:${e.color}18;border:1px solid ${e.color}40">${e.avatar}</div></td>
+        <td>
+          <div class="lb-name" style="color:${e.color}">${e.username.toUpperCase()}
+            ${e.username === currentUser?.username ? '<span class="lb-badge">YOU</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px">${e.tips} tips</div>
+        </td>
+        <td><div class="lb-pts">${e.total}</div></td>
+        <td class="hide-mobile"><div class="lb-stat">${e.correct}</div></td>
+        <td class="hide-mobile"><div class="lb-stat">${e.winRate}%</div></td>
+      </tr>`).join('');
+  } catch { document.getElementById('lb-body').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Failed to load</td></tr>'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ROUND RESULT NOTIFICATION BANNER
+// ═══════════════════════════════════════════════════════════════════
+let bannerRound = null;
+
+async function checkForNewResults() {
+  if (!tipToken || !currentUser) return;
+  try {
+    // Get all known rounds from leaderboard
+    const lb = await fetch('/api/tipping/leaderboard').then(r => r.json());
+    const allRounds = new Set();
+    (lb.board || []).forEach(e => Object.keys(e.rounds || {}).forEach(rd => allRounds.add(rd)));
+    if (lb.activeRound) allRounds.add(lb.activeRound);
+    const activeRoundId = lb.activeRound;
+    // Previous (closed) rounds = all except active
+    const pastRounds = [...allRounds].filter(rd => rd !== activeRoundId).sort().reverse();
+    if (!pastRounds.length) return;
+
+    // Which rounds has this user seen a notification for?
+    const seenKey = `tip_seen_rounds_${currentUser.username}`;
+    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) || '[]'));
+
+    // Check each unseen past round for finalized results the user tipped in
+    for (const rd of pastRounds) {
+      if (seen.has(rd)) continue;
+      const res = await fetch(`/api/tipping/round-results?round=${encodeURIComponent(rd)}`);
+      const d = await res.json();
+      const fixtures = d.fixtures || [];
+      const results  = d.results  || {};
+      const myTipsR  = await fetch('/api/tipping/my-tips', { headers: { 'x-session-token': tipToken } })
+                              .then(r => r.json());
+      const myTipsMap = myTipsR.tips || {};
+
+      // Count how many of my tips have finalised results
+      let finalisedTips = 0, correct = 0, pts = 0;
+      fixtures.forEach(f => {
+        const result = results[f.id];
+        const myPick = myTipsMap[f.id];
+        if (result?.status === 'final' && myPick) {
+          const scored = scoreOnePick(myPick, result);
+          if (scored) { finalisedTips++; pts += scored.pts; if (scored.correct) correct++; }
+        }
+      });
+
+      if (finalisedTips > 0) {
+        // Show banner for this round
+        bannerRound = rd;
+        document.getElementById('rr-banner-title').textContent = `${rd} Results Are In! 🎉`;
+        document.getElementById('rr-banner-sub').textContent =
+          `You got ${correct}/${finalisedTips} correct · ${Math.round(pts * 10) / 10} pts earned. Tap to see your full scorecard.`;
+        document.getElementById('round-result-banner').style.display = 'block';
+        return; // Show one banner at a time
+      }
+
+      // Even if no tips, mark as seen so we don't keep hitting the API
+      seen.add(rd);
+      localStorage.setItem(seenKey, JSON.stringify([...seen]));
+    }
+  } catch(e) { console.warn('[banner] check failed:', e); }
+}
+
+function dismissResultBanner() {
+  const banner = document.getElementById('round-result-banner');
+  banner.style.display = 'none';
+  if (bannerRound && currentUser) {
+    const seenKey = `tip_seen_rounds_${currentUser.username}`;
+    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) || '[]'));
+    seen.add(bannerRound);
+    localStorage.setItem(seenKey, JSON.stringify([...seen]));
+    bannerRound = null;
+  }
+}
+
+function viewBannerResults() {
+  dismissResultBanner();
+  // Navigate to results tab and pre-select the round
+  const btn = document.querySelector('.tip-nav-btn[onclick*="results"]');
+  showTipPage('results', btn);
+  // Pre-select the round in the selector after it loads
+  setTimeout(() => {
+    const sel = document.getElementById('results-round-select');
+    if (sel && bannerRound) { sel.value = bannerRound; loadResults(); }
+    else loadResultsRounds();
+  }, 400);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RESULTS
+// ═══════════════════════════════════════════════════════════════════
+async function loadResultsRounds() {
+  // Populate round select from tipping data
+  try {
+    const r = await fetch('/api/tipping/leaderboard');
+    const d = await r.json();
+    const select = document.getElementById('results-round-select');
+    const rounds = new Set();
+    (d.board || []).forEach(e => Object.keys(e.rounds || {}).forEach(rd => rounds.add(rd)));
+    if (d.activeRound) rounds.add(d.activeRound);
+    select.innerHTML = '<option value="">Select round...</option>' +
+      [...rounds].sort().reverse().map(rd => `<option value="${rd}">${rd}</option>`).join('');
+    if (rounds.size) { select.value = [...rounds][0]; loadResults(); }
+  } catch {}
+}
+
+async function loadResults() {
+  const round = document.getElementById('results-round-select').value;
+  const list  = document.getElementById('results-list');
+  const empty = document.getElementById('results-empty');
+  if (!round) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+
+  try {
+    const r = await fetch(`/api/tipping/round-results?round=${encodeURIComponent(round)}`);
+    const d = await r.json();
+    const fixturesR = d.fixtures || [];
+    const results   = d.results  || {};
+    const myRoundTips = (await fetch('/api/tipping/my-tips', { headers: { 'x-session-token': tipToken } }).then(r => r.json())).tips || {};
+
+    let pts = 0, correct = 0, total = 0;
+    list.innerHTML = fixturesR.map(f => {
+      const result = results[f.id];
+      const myPick = myRoundTips[f.id];
+      let tag = '', ptsEl = '';
+      if (result?.status === 'final' && myPick) {
+        const scored = scoreOnePick(myPick, result);
+        if (scored) {
+          pts += scored.pts; total++;
+          if (scored.correct) correct++;
+          tag = `<span class="result-pick-tag ${scored.correct ? 'correct' : 'wrong'}">${scored.correct ? '✓' : '✗'} ${myPick.tip}</span>`;
+          ptsEl = `<div class="result-pts">+${scored.pts}</div>`;
+        }
+      } else if (myPick) {
+        tag = `<span class="result-pick-tag pending">⏳ ${myPick.tip}</span>`;
+      } else {
+        tag = `<span class="result-pick-tag pending">— No tip</span>`;
+      }
+      return `<div class="result-fixture">
+        <div>
+          <div class="result-teams">${f.home} vs ${f.away}</div>
+          ${result?.winner ? `<div class="result-winner">✓ WINNER: ${result.winner}${result.margin ? ` by ${result.margin} pts` : ''}</div>` : '<div class="result-winner" style="color:var(--muted)">Result pending</div>'}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">${tag}${ptsEl}</div>
+      </div>`;
+    }).join('');
+
+    if (total) {
+      document.getElementById('results-my-summary').style.display = 'block';
+      document.getElementById('res-pts').textContent     = Math.round(pts * 10) / 10;
+      document.getElementById('res-correct').textContent = correct;
+      document.getElementById('res-rate').textContent    = Math.round((correct / total) * 100) + '%';
+    }
+    empty.style.display = fixturesR.length ? 'none' : 'block';
+  } catch { list.innerHTML = ''; empty.style.display = 'block'; }
+}
+
+// Client-side score helper (mirrors server)
+function scoreOnePick(pick, result) {
+  if (!result || result.status !== 'final') return null;
+  let pts = 0;
+  const correct = pick.tip === result.winner;
+  if (correct) {
+    pts += 1;
+    if (pick.confidence) pts += Math.round((pick.confidence / 8) * 4 * 10) / 10;
+    if (pick.margin != null && result.margin != null) {
+      const diff = Math.abs(pick.margin - result.margin);
+      if (diff === 0)      pts += 5;
+      else if (diff <= 6)  pts += 2;
+      else if (diff <= 12) pts += 1;
+    }
+  }
+  if (pick.banker) pts *= 2;
+  return { pts: Math.round(pts * 10) / 10, correct };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMPS
+// ═══════════════════════════════════════════════════════════════════
+async function createComp() {
+  const name  = document.getElementById('comp-name').value.trim();
+  const sport = document.getElementById('comp-sport').value;
+  if (!name) return showToast('Enter a comp name');
+  try {
+    const r = await fetch('/api/tipping/comps/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': tipToken },
+      body: JSON.stringify({ name, sport })
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast(`✓ Comp created! Code: ${d.code}`);
+      document.getElementById('comp-name').value = '';
+      loadComps();
+    } else showToast('⚠️ ' + (d.error || 'Failed'));
+  } catch { showToast('⚠️ Connection error'); }
+}
+
+async function joinComp() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!code) return showToast('Enter an invite code');
+  try {
+    const r = await fetch('/api/tipping/comps/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': tipToken },
+      body: JSON.stringify({ code })
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast(`✓ Joined ${d.comp.name}!`);
+      document.getElementById('join-code').value = '';
+      loadComps();
+    } else showToast('⚠️ ' + (d.error || 'Failed'));
+  } catch { showToast('⚠️ Connection error'); }
+}
+
+async function loadComps() {
+  try {
+    const r = await fetch('/api/tipping/comps/mine', { headers: { 'x-session-token': tipToken } });
+    const d = await r.json();
+    const comps = d.comps || [];
+    const list  = document.getElementById('comps-list');
+    const empty = document.getElementById('comps-empty');
+
+    if (!comps.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    list.innerHTML = comps.map(c => `
+      <div class="comp-card">
+        <div class="comp-header">
+          <div>
+            <div class="comp-name">${c.name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--mono)">${c.sport} · ${c.members.length} members · by ${c.creator}</div>
+          </div>
+          <div>
+            <div class="comp-code" onclick="copyCode('${c.code}')" title="Click to copy">📋 ${c.code}</div>
+          </div>
+        </div>
+        <div class="comp-mini-lb">
+          ${c.board.slice(0, 5).map((m, i) => `
+            <div class="comp-mini-row">
+              <div style="font-family:var(--head);font-size:16px;font-weight:900;min-width:28px;color:${i===0?'#ffd700':i===1?'#c0c8d8':i===2?'#cd7f32':'var(--muted)'}">${i<3?['🥇','🥈','🥉'][i]:'#'+(i+1)}</div>
+              <div style="width:32px;height:32px;border-radius:6px;background:${m.color}18;border:1px solid ${m.color}40;display:flex;align-items:center;justify-content:center;font-size:16px">${m.avatar}</div>
+              <div style="flex:1;font-family:var(--head);font-size:14px;font-weight:700;color:${m.color}">${m.username.toUpperCase()}${m.username===currentUser?.username?'<span class="lb-badge" style="margin-left:6px">YOU</span>':''}</div>
+              <div style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--lime)">${m.total} pts</div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  } catch { document.getElementById('comps-list').innerHTML = ''; }
+}
+
+function copyCode(code) {
+  navigator.clipboard?.writeText(code).then(() => showToast(`Code ${code} copied!`)).catch(() => showToast(`Code: ${code}`));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('tip-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Init ──
+checkAuth();
+</script>
+</body>
+</html>
