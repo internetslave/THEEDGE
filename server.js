@@ -158,7 +158,7 @@ const initBins = loadStore;
 // ═══════════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════════
-const SESSION_TTL    = 30 * 24 * 60 * 60 * 1000;
+const SESSION_TTL    = 7 * 24 * 60 * 60 * 1000;   // 7-day tokens
 const SESSION_SECRET = process.env.SESSION_SECRET || 'edgeiq-fallback-secret-change-me';
 const AVATARS = ['🎯','🔥','⚡','💰','🏆','🦊','🐆','🌟','🎲','🃏'];
 const COLORS  = ['#f0b429','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f97316','#e8314a','#00c85a','#f59e0b'];
@@ -224,6 +224,40 @@ function makeRateLimit(maxReqs, windowMs, msg = 'Too many requests — try again
 const rateLimit = makeRateLimit(60, 60_000);
 // Strict auth rate limit: 10 attempts per 15 min — brute-force protection
 const authRateLimit = makeRateLimit(10, 15 * 60_000, 'Too many attempts — wait 15 minutes');
+
+// Per-username PIN lockout: 5 failed attempts → 10-minute cooldown
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS   = 10 * 60 * 1000;
+const pinFailStore = new Map(); // username → { count, lockedUntil }
+
+function checkPinLockout(username) {
+  const rec = pinFailStore.get(username);
+  if (!rec) return null;
+  if (rec.lockedUntil && Date.now() < rec.lockedUntil) {
+    const secsLeft = Math.ceil((rec.lockedUntil - Date.now()) / 1000);
+    const mins = Math.ceil(secsLeft / 60);
+    return `Account locked — too many failed attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`;
+  }
+  return null;
+}
+function recordPinFail(username) {
+  const rec = pinFailStore.get(username) || { count: 0, lockedUntil: 0 };
+  rec.count++;
+  if (rec.count >= PIN_MAX_ATTEMPTS) {
+    rec.lockedUntil = Date.now() + PIN_LOCKOUT_MS;
+    console.warn(`[auth] ${username} locked out after ${rec.count} failed PIN attempts`);
+  }
+  pinFailStore.set(username, rec);
+}
+function clearPinFail(username) {
+  pinFailStore.delete(username);
+}
+
+// Prune old lockout entries hourly
+setInterval(() => {
+  const cutoff = Date.now() - PIN_LOCKOUT_MS * 2;
+  for (const [k, v] of pinFailStore) { if ((v.lockedUntil || 0) < cutoff && v.count < PIN_MAX_ATTEMPTS) pinFailStore.delete(k); }
+}, 60 * 60_000);
 
 // Periodically prune old entries so the map doesn't grow unbounded
 setInterval(() => {
@@ -888,14 +922,22 @@ app.post('/api/auth/signin', authRateLimit, async (req, res) => {
   if (!username || !pin) return res.status(400).json({ error: 'Username and PIN required' });
   username = username.toLowerCase().trim();
   if (username.length > 20) return res.status(400).json({ error: 'Invalid credentials' });
+
+  // Per-username lockout check (runs before expensive hashPin)
+  const lockMsg = checkPinLockout(username);
+  if (lockMsg) return res.status(429).json({ error: lockMsg });
+
   const users = await getUsers();
   const user  = users[username];
   // Always run hashPin even if user not found — prevents timing-based enumeration
   const dummySalt = 'ffffffffffffffffffffffffffffffff';
   const provided  = hashPin(String(pin).substring(0, 10), user ? user.salt : dummySalt);
   if (!user || provided !== user.pinHash) {
+    if (user) recordPinFail(username); // only count fails on real accounts
     return res.status(401).json({ error: 'Invalid username or PIN' });
   }
+
+  clearPinFail(username); // reset counter on success
   const token = createSession(username);
   res.json({ success: true, token, profile: { username, avatar: user.avatar, color: user.color, sport: user.sport } });
 });
@@ -1073,6 +1115,54 @@ app.post('/api/analyse', rateLimit, authMiddleware, async (req, res) => {
     if (analysis._error) return res.status(402).json({ success: false, errorType: analysis._error, error: analysis.message });
     res.json({ success: true, analysis });
   } catch { res.status(500).json({ success: false, error: 'Analysis failed' }); }
+});
+
+// ── ROSTERS — player pools for extra markets (updateable without redeploying frontend) ──
+const ROSTERS = {
+  AFL_FWDS: [
+    'Charlie Curnow','Jeremy Cameron','Tom Hawkins','Tom Lynch','Joe Daniher',
+    'Nick Riewoldt','Jack Gunston','Josh Bruce','Mitch Lewis','Harry McKay',
+    'Eric Hipwood','Matthew Owies','Aaron Naughton','Toby McLean','Paddy Ryder',
+    'Coleman-Jones','Jack Lukosius','Mabior Chol','Peter Ladhams','Sam Hayes',
+    'Charlie Dixon','Jy Farrar','Jack Billings','Tyler Brockman','Callum Brown',
+    'Sam Butler','Jake Stringer','Jonathon Patton','Max King','Ben Brown'
+  ],
+  AFL_MIDS: [
+    'Patrick Dangerfield','Marcus Bontempelli','Clayton Oliver','Lachie Neale',
+    'Josh Kelly','Andrew Brayshaw','Tom Mitchell','Jack Steele','Patrick Cripps',
+    'Dustin Martin','Christian Petracca','Zach Merrett','Rory Laird','Sam Walsh',
+    'Jordan Dawson','Brandon Ellis','Tim Taranto','James Sicily','Nick Daicos',
+    'Will Ashcroft','Caleb Serong','Bailey Smith','Jackson Macrae','Rowan Marshall',
+    'Darcy Parish','Jaeger O\'Meara','Lachlan Sholl','Jai Newcombe','Matt Rowell','Noah Anderson'
+  ],
+  NRL_BACKS: [
+    'James Tedesco','Latrell Mitchell','Ryan Papenhuyzen','Tom Trbojevic',
+    'Joseph Suaalii','Zac Lomax','Selwyn Cobbo','Xavier Coates','Kotoni Staggs',
+    'Brian To\'o','David Nofoaluma','Josh Addo-Carr','Valentine Holmes','Matt Dufty',
+    'Murray Taulagi','Hamiso Tabuai-Fidow','Jack Bird','Kyle Feldt','Albert Hopoate',
+    'Corey Oates','Dominic Young','Kalyn Ponga','Jack Wighton','Brent Naden',
+    'Reimis Smith','Josh Mansour','Ronaldo mulitalo','Bradman Best','Siosifa Talakai','Dane Gagai'
+  ],
+  NRL_HALVES: [
+    'Nathan Cleary','Daly Cherry-Evans','Cameron Munster','Jarome Luai',
+    'Adam Reynolds','Nicho Hynes','Luke Brooks','Lachlan Galvin','Cody Walker',
+    'Shaun Johnson','AJ Brimson','Jayden Sullivan','Tommy Talau','Kyle Flanagan',
+    'Mitch Moses','Ben Hunt','Andrew Johns','Jake Friend','Api Koroisau','Damien Cook'
+  ],
+  NBA_POOL: [
+    'Jayson Tatum','Jaylen Brown','LeBron James','Anthony Davis','Stephen Curry',
+    'Kevin Durant','Devin Booker','Joel Embiid','Shai Gilgeous-Alexander','Nikola Jokic',
+    'Giannis Antetokounmpo','Damian Lillard','Karl-Anthony Towns','Jalen Brunson',
+    'Donovan Mitchell','Tyrese Haliburton','De\'Aaron Fox','Anthony Edwards',
+    'Luka Doncic','Kyrie Irving','Kawhi Leonard','Paul George','Trae Young',
+    'Zion Williamson','CJ McCollum','Darius Garland','Ja Morant','Bam Adebayo',
+    'Lauri Markkanen','Desmond Bane'
+  ]
+};
+
+app.get('/api/rosters', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=3600'); // 1-hour browser cache
+  res.json({ success: true, rosters: ROSTERS });
 });
 
 // ── HEALTH — public minimal ping only ──

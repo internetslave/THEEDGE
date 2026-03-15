@@ -44,3 +44,10 @@ const weatherCache = {};
 const SLIP_KEY = 'edgeiq-slip';
 const DISCLAIMER_KEY = 'edgeiq-disclaimer-v1';
 const BOOKIE_PREF_KEY = 'edgeiq-preferred-bookie';
+
+// Roster pools — populated from /api/rosters on init, fallback to empty arrays
+let AFL_FWDS  = [];
+let AFL_MIDS  = [];
+let NRL_BACKS = [];
+let NRL_HALVES = [];
+let NBA_POOL  = [];

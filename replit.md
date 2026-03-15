@@ -24,9 +24,16 @@ A sports betting intelligence dashboard at edgebets.net that fetches live odds f
 ## Sports Covered
 AFL, NRL, NBA, Soccer (A-League & EPL), UFC, Boxing, Greyhound Racing, Horse Racing
 
+## Auth Security
+- Sessions: HMAC-signed, **7-day TTL** (username:expiry:sig). Stateless — no server session store.
+- IP rate limiting: 10 auth attempts per 15 min per IP (all auth routes)
+- **Per-username PIN lockout**: 5 wrong PINs → 10-minute cooldown (real accounts only, prevents enumeration)
+- Token expiry validated server-side on every authenticated request
+
 ## Key Features
 - Live odds with 6-hour cache — **persisted to JSONBin so server restarts use 0 credits** (slimmed to ~60KB per save)
 - Per-sport regional bookmaker config: AU for local sports, AU+US for NBA/UFC/Boxing, AU+UK for EPL
+- **`/api/rosters`** — server-managed player pools (AFL_FWDS, AFL_MIDS, NRL_BACKS, NRL_HALVES, NBA_POOL); update ROSTERS constant in server.js, no frontend redeploy needed
 - Real horse racing data via The Racing API (theracingapi.com) with 15-min cache
   - Fetches AU meets for today+tomorrow, real runners with jockey/trainer/form/odds
   - Falls back to seeded-RNG generated data if API credentials not configured
