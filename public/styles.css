@@ -10,7 +10,7 @@
   --border-glow: rgba(16,185,129,.15);
   --text: #e2e8f0;
   --text2: #cbd5e1;
-  --muted: #64748b;
+  --muted: #8494a7;
   --dim: #334155;
 
   /* ── SPORT ACCENTS ── */
@@ -867,6 +867,13 @@ footer{border-top:1px solid var(--border);padding:18px 28px;display:flex;justify
   .bet-card-pnl{font-size:13px;font-family:var(--mono);font-weight:700;margin-left:auto}
   .bet-card-stake{font-size:12px;color:var(--muted);font-family:var(--mono)}
 
+
+  /* ── PERFORMANCE: reduce blur on mobile ── */
+  .card, .stat-card, .match-card, .ai-panel, .ai-pick, .bet-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
   /* ── FIX OVERFLOW ── */
   #page-mybets .section-title{font-size:13px}
   .motd-card{overflow:hidden}
@@ -955,3 +962,22 @@ footer{border-top:1px solid var(--border);padding:18px 28px;display:flex;justify
   font-family:var(--mono);-webkit-tap-highlight-color:transparent;
 }
 .slip-add-btn:active{background:rgba(16,185,129,.15)}
+
+
+/* ── INDICATIVE ODDS LABEL ── */
+.indicative-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);
+  border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;
+  letter-spacing:1px;color:#f59e0b;margin-bottom:8px;font-family:var(--mono);
+}
+
+/* ── FOCUS VISIBLE for keyboard nav ── */
+:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
