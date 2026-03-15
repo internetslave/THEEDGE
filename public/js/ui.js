@@ -203,8 +203,6 @@ function closeConfirm() { document.getElementById('confirm-modal').classList.rem
 
 function closeMatchModal() { document.getElementById('match-modal').classList.remove('show'); }
 
- { document.getElementById('match-modal').classList.remove('show'); }
-
 function startFactCycler() {
   const box  = document.getElementById('md-fun-fact');
   const text = document.getElementById('md-fun-fact-text');
@@ -335,34 +333,6 @@ function showToast(msg, ok=true) {
 
 // ═══════════════════════════════════════════════════════════════════
 
-  const m = UPCOMING.find(x=>String(x.id)===String(matchId));
-  if (!m) return;
-  quickBetMatch = m;
-
-  if (m.isRacing && m.runners && m.runners.length) {
-    document.getElementById('qb-match-label').textContent = `R${m.raceNumber} ${m.venue} · ${m.time}`;
-    document.getElementById('qb-pick-label').textContent = 'YOUR PICK';
-    const sel = document.getElementById('qb-runner-select');
-    sel.innerHTML = m.runners.map((r, i) => `<option value="${i}">${r.barrier||i+1}. ${r.name} — $${r.odds < 99 ? r.odds.toFixed(2) : '—'}${i===0?' ★ FAV':''}</option>`).join('');
-    sel.value = '0';
-    document.getElementById('qb-runner-selector').style.display = 'block';
-    updateQuickBetRunner();
-  } else {
-    document.getElementById('qb-match-label').textContent = `${m.home} vs ${m.away} · ${m.time}`;
-    document.getElementById('qb-pick-label').textContent = 'AI PICK';
-    document.getElementById('qb-pick').textContent = m.pick;
-    const oddsVal = m.pick===m.home ? m.homeOdds : m.pick===m.away ? m.awayOdds : m.drawOdds;
-    document.getElementById('qb-odds').textContent = oddsVal ? oddsVal+'x' : '—';
-    document.getElementById('qb-runner-selector').style.display = 'none';
-    document.getElementById('qb-runner-select').innerHTML = '';
-  }
-
-  document.getElementById('qb-stake').value = '';
-  document.getElementById('qb-result').value = 'PENDING';
-  document.getElementById('quick-bet-modal').style.display = 'flex';
-  setTimeout(()=>document.getElementById('qb-stake').focus(), 100);
-}
-
 function updateQuickBetRunner() {
   const m = quickBetMatch;
   if (!m || !m.runners) return;
@@ -455,6 +425,9 @@ function exportBetsCSV() {
 
 // ═══════════════════════════════════════════════════════════════════
 
+function openBookieSheet(matchId, pick, odds, sport, stake) {
+  _bookieMatchId = matchId;
+  _bookiePick    = pick || '';
   _bookieOdds    = odds || '';
   _bookieSport   = sport || '';
   _bookieStake   = stake || '';

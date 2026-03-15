@@ -95,6 +95,12 @@ function buildSpeedMap(runners, sport) {
 async function attachWeatherInfo() {
   const spans = document.querySelectorAll('[data-weather-venue]');
   const venues = [...new Set([...spans].map(s=>s.dataset.weatherVenue))];
+  await Promise.all(venues.map(v => fetchVenueWeather(v)));
+  spans.forEach(s => {
+    const w = weatherCache[s.dataset.weatherVenue];
+    s.textContent = w ? `${wmoEmoji(w.code)} ${w.temp}°C` : '';
+  });
+}
 
 function enrichEvent(ev) {
   // Guard: skip entirely if event is null/undefined
@@ -181,9 +187,6 @@ function hashCode(s) {
 
 
 // ── IDLE DETECTION ──
-// Reset the "last active" timestamp whenever the user touches the page
-['mousemove','keydown','scroll','touchstart','click'].forEach(evt => {
-
 function isUserIdle() {
   return (Date.now() - _lastActivity) > 15 * 60 * 1000;
 }

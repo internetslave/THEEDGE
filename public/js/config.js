@@ -27,6 +27,7 @@ function matchesSportFilter(sportLabel, filterKey) {
 }
 
 
+const VENUE_COORDS = {
   'Flemington':[-37.8006,144.9093],'Caulfield':[-37.8767,145.0432],
   'Rosehill':[-33.8361,150.9916],'Randwick':[-33.8963,151.2096],
   'Royal Randwick':[-33.8963,151.2096],'Eagle Farm':[-27.4291,153.0697],
@@ -69,7 +70,6 @@ function wmoEmoji(code) {
 }
 
 
-setInterval(updateLastUpdatedBadge, 60 * 1000);
 
 // ── Sample H2H data ──
 const H2H = {
@@ -97,6 +97,7 @@ const BETTING_FACTS = [
   "Backing underdogs in head-to-head markets outperforms favourites in the long run."
 ];
 
+const BOOKIES = [
   { name:'Ladbrokes', color:'#e50000', bg:'rgba(229,0,0,.12)', border:'rgba(229,0,0,.45)',
     urls:{ AFL:'https://www.ladbrokes.com.au/sport/australian-rules-football', NRL:'https://www.ladbrokes.com.au/sport/rugby-league', NBA:'https://www.ladbrokes.com.au/sport/basketball', Soccer:'https://www.ladbrokes.com.au/sport/soccer', UFC:'https://www.ladbrokes.com.au/sport/ufc', Boxing:'https://www.ladbrokes.com.au/sport/boxing', 'Horse Racing':'https://www.ladbrokes.com.au/racing/horse-racing', Greyhound:'https://www.ladbrokes.com.au/racing/greyhound-racing' } },
   { name:'TAB', color:'#00a650', bg:'rgba(0,166,80,.12)', border:'rgba(0,166,80,.45)',
@@ -115,6 +116,3 @@ const BETTING_FACTS = [
     urls:{ AFL:'https://www.bluebet.com.au/sports/australian-rules', NRL:'https://www.bluebet.com.au/sports/rugby-league', NBA:'https://www.bluebet.com.au/sports/basketball', Soccer:'https://www.bluebet.com.au/sports/soccer', UFC:'https://www.bluebet.com.au/sports/mma', Boxing:'https://www.bluebet.com.au/sports/boxing', 'Horse Racing':'https://www.bluebet.com.au/racing', Greyhound:'https://www.bluebet.com.au/racing' } },
 ];
 
-
-function openBookieSheet(matchId, pick, odds, sport, stake) {
-  _bookieMatchId = matchId;
