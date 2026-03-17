@@ -1,0 +1,16 @@
+[loadStore] status=200 length=54120
+[Odds restore] persisted sports: [aussierules_afl, rugbyleague_nrl, soccer_australia_aleague, soccer_epl, mma_mixed_martial_arts, boxing_boxing, basketball_nba]
+  ✓ aussierules_afl (218min old, 3 events)
+  ✓ rugbyleague_nrl (218min old, 10 events)
+  ✓ soccer_australia_aleague (218min old, 6 events)
+  ✓ soccer_epl (218min old, 23 events)
+  ✓ mma_mixed_martial_arts (218min old, 55 events)
+  ✓ boxing_boxing (218min old, 40 events)
+  ✓ basketball_nba (218min old, 10 events)
+✅ Store loaded — 14 users | AI cache: 3 warm | Odds: restored (7/7 sports, saved 7 credits)
+EdgeIQ running on port 5000
+DB:  ✓ JSONBin connected | users=14
+Odds API:      ✓
+Anthropic API: ✓
+Racing API failed, using horse fallback: Racing API 401: Unauthorized
+Racing API failed, using horse fallback: Racing API 401: Unauthorized

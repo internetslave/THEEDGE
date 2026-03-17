@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#080b14">
-<title>The Tip — The Edge</title>
+<meta name="theme-color" content="#07111f">
+<title>EdgeIQ Tipping</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:       #0e1220;
@@ -554,14 +554,15 @@ body::before{
 .rr-banner-close{font-size:18px;color:var(--muted);cursor:pointer;padding:2px 6px;background:none;border:none;flex-shrink:0;align-self:flex-start}
 .rr-banner-close:hover{color:var(--text)}
 </style>
+<link rel="stylesheet" href="/premium-suite.css">
 </head>
-<body>
+<body class="suite-app edgeiq-tipping">
 
 <!-- ── AUTH OVERLAY ── -->
 <div id="tip-auth">
   <div class="auth-box">
-    <div class="auth-logo">THE TIP</div>
-    <div class="auth-sub">THE EDGE TIPPING COMPETITION</div>
+    <div class="auth-logo">EDGEIQ TIPPING</div>
+    <div class="auth-sub">COMPETITION INTELLIGENCE FOR YOUR CREW</div>
     <div class="auth-tab-row">
       <button class="auth-tab active" onclick="showAuthTab('in',this)">Sign In</button>
       <button class="auth-tab" onclick="showAuthTab('up',this)">Join</button>
@@ -579,7 +580,7 @@ body::before{
       <button class="tip-btn-primary" onclick="doTipSignUp()">CREATE ACCOUNT →</button>
     </div>
     <div style="text-align:center;margin-top:16px">
-      <a onclick="window.location.href='/'" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:none">← Already have a The Edge account? Same login works here</a>
+      <a onclick="window.location.href='/'" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:none">← Already have an EdgeIQ account? Same login works here</a>
     </div>
   </div>
 </div>
@@ -603,15 +604,15 @@ body::before{
 <!-- ── HEADER ── -->
 <div id="tip-header">
   <div class="tip-logo" onclick="window.location.href='/tipping'">
-    <div class="tip-logo-mark">TE</div>
+    <div class="tip-logo-mark">EI</div>
     <div>
-      <div class="tip-logo-name">The Tip</div>
-      <div class="tip-logo-sub">Tipping Competition</div>
+      <div class="tip-logo-name">EdgeIQ Tipping</div>
+      <div class="tip-logo-sub">Competition Suite</div>
     </div>
   </div>
   <div class="tip-header-right">
     <div id="tip-user-badge"></div>
-    <a href="/" class="back-link">← The Edge</a>
+    <a href="/" class="back-link">← EdgeIQ</a>
   </div>
 </div>
 
@@ -641,6 +642,38 @@ body::before{
 
 <!-- ── MAIN ── -->
 <div id="tip-main">
+  <section class="suite-subproduct-hero">
+    <div class="suite-subproduct-panel">
+      <div class="subproduct-kicker">Competition Layer</div>
+      <div class="subproduct-title">Tipping that feels like a real product, not a side tool.</div>
+      <div class="subproduct-copy">Lock tips before round start, track banker confidence, compare against your comp, and keep the whole experience clean, premium, and easy to trust.</div>
+      <div class="suite-pills">
+        <span class="suite-pill">Round lockout aware</span>
+        <span class="suite-pill">Confidence + banker scoring</span>
+        <span class="suite-pill">Private comps</span>
+      </div>
+      <div class="suite-inline-note" style="margin-top:16px">Tipping standings are based on submitted picks and official round results. Confidence and banker settings affect scoring, but they do not imply certainty.</div>
+    </div>
+    <div class="suite-subproduct-side">
+      <div class="suite-subproduct-grid">
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Workflow</div>
+          <div class="suite-stat-value">Tip</div>
+          <div class="suite-stat-foot">Pick winners, add margin confidence, and submit before lockout.</div>
+        </div>
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Competition</div>
+          <div class="suite-stat-value">Compare</div>
+          <div class="suite-stat-foot">Track leaderboard movement and comp standings in one place.</div>
+        </div>
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Outcome</div>
+          <div class="suite-stat-value">Review</div>
+          <div class="suite-stat-foot">See scored rounds, comp results, and consistency over time.</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ══ MY TIPS PAGE ══ -->
   <div id="tip-page-tips" class="tip-page active">

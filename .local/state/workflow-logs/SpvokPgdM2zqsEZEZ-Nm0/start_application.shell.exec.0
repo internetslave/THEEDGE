@@ -1,0 +1,14 @@
+[loadStore] status=200 length=55820
+[Odds restore] persisted sports: [aussierules_afl, rugbyleague_nrl, soccer_australia_aleague, soccer_epl, mma_mixed_martial_arts, boxing_boxing, basketball_nba]
+  ✗ aussierules_afl (774min old — stale, pruned)
+  ✗ rugbyleague_nrl (774min old — stale, pruned)
+  ✗ soccer_australia_aleague (774min old — stale, pruned)
+  ✗ soccer_epl (774min old — stale, pruned)
+  ✗ mma_mixed_martial_arts (774min old — stale, pruned)
+  ✗ boxing_boxing (774min old — stale, pruned)
+  ✗ basketball_nba (774min old — stale, pruned)
+✅ Store loaded — 14 users | AI cache: 0 warm | Odds: 0/7 sports cached (stale, will re-fetch)
+EdgeIQ running on port 5000
+DB:  ✓ JSONBin connected | users=14
+Odds API:      ✓
+Anthropic API: ✓

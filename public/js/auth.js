@@ -115,7 +115,7 @@ async function doForgotPin() {
     const data = await res.json();
     if (!res.ok) { resEl.style.color='#ef4444'; resEl.textContent = data.error || 'No match found.'; return; }
     resEl.style.color = '#10b981';
-    resEl.innerHTML = `✅ PIN reset! Your new PIN is: <strong style="font-size:18px;color:#10b981;letter-spacing:4px">${data.newPin}</strong><br><span style="color:var(--muted)">Sign in now and change it in your profile.</span>`;
+    resEl.innerHTML = `✅ Recovery request received.<br><span style="color:var(--muted)">${data.message || 'If that account exists, the request has been recorded.'}</span>`;
     document.getElementById('si-user').value = username;
     document.getElementById('si-pin').value  = '';
   } catch(e) { resEl.style.color='#ef4444'; resEl.textContent = 'Network error.'; }
@@ -135,6 +135,10 @@ async function loginAs(profile) {
   av.style.background = profile.color+'22';
   av.style.border = `1px solid ${profile.color}44`;
   document.getElementById('user-name').textContent = profile.username.toUpperCase();
+  const userSub = document.getElementById('user-sub');
+  if (userSub) userSub.textContent = `${profile.sport || 'All sports'} · Starter plan`;
+  const planBadge = document.getElementById('plan-badge');
+  if (planBadge) planBadge.textContent = bets.length >= 5 ? 'Starter active' : 'Starter';
   // Update mobile header & sheet
   const mobileAvBtn = document.getElementById('mobile-user-btn');
   if (mobileAvBtn) {
@@ -190,7 +194,9 @@ showLbSport = async function(sport, btn) {
     document.querySelectorAll('#page-leaderboard .filter-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   }
-  document.getElementById('lb-content').innerHTML = `<div class="empty">Loading leaderboard...</div>`;
+  const summaryEl = document.getElementById('lb-summary');
+  if (summaryEl) summaryEl.innerHTML = '';
+  document.getElementById('lb-content').innerHTML = renderStateEmpty('🏆', 'Loading leaderboard', 'Pulling the latest tracked performance across all active accounts.');
   try {
     const r = await fetch('/api/leaderboard');
     const d = await r.json();
@@ -201,14 +207,46 @@ showLbSport = async function(sport, btn) {
 
     const rankEmoji  = ['🥇','🥈','🥉'];
     const rankColors = ['#10b981','#94a3b8','#f97316'];
+    const totalTracked = allEntries.reduce((sum, entry) => sum + (entry.totalBets || 0), 0);
+    const totalSettled = allEntries.reduce((sum, entry) => sum + (entry.settled || 0), 0);
+    const avgRoi = allEntries.length ? (allEntries.reduce((sum, entry) => sum + (entry.roi || 0), 0) / allEntries.length).toFixed(1) : '0.0';
+    if (summaryEl && allEntries.length) {
+      summaryEl.innerHTML = `
+        <div class="lb-summary-grid">
+          <div class="lb-summary-card">
+            <div class="lb-summary-label">Active Accounts</div>
+            <div class="lb-summary-value">${allEntries.length}</div>
+          </div>
+          <div class="lb-summary-card">
+            <div class="lb-summary-label">Tracked Bets</div>
+            <div class="lb-summary-value">${totalTracked}</div>
+          </div>
+          <div class="lb-summary-card">
+            <div class="lb-summary-label">Settled Bets</div>
+            <div class="lb-summary-value">${totalSettled}</div>
+          </div>
+        </div>
+        <div class="suite-inline-note" style="margin-bottom:14px">Leaderboard performance is based on user-tracked bets. ROI and win rate only count settled results, while pending bets stay visible separately.</div>
+        ${allEntries.length >= 3 ? `
+          <div class="lb-podium">
+            ${allEntries.slice(0,3).map((entry, idx) => `
+              <div class="lb-podium-card">
+                <div class="podium-rank" style="color:${rankColors[idx]}">${rankEmoji[idx]} Rank ${idx + 1}</div>
+                <div class="podium-name" style="color:${entry.color}">${entry.avatar} ${entry.username.toUpperCase()}</div>
+                <div class="podium-metric" style="color:${entry.roi >= 0 ? '#7ef7d2' : '#fca5a5'}">${entry.roi >= 0 ? '+' : ''}${entry.roi}%</div>
+                <div class="lb-meta">${entry.totalBets} bets tracked · ${entry.settled} settled · ${entry.wins} wins · ${entry.winRate}% win rate</div>
+              </div>`).join('')}
+          </div>` : ''}
+      `;
+    }
 
     document.getElementById('lb-content').innerHTML = allEntries.length < 2
-      ? `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:28px;text-align:center">
-          <div style="font-size:36px;margin-bottom:12px">👥</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;margin-bottom:8px">WAITING FOR YOUR MATES</div>
-          <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:16px">Share this app with your friends. Each person creates their own account and their stats appear here automatically.</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px">${window.location.origin}</div>
-        </div>`
+      ? renderStateEmpty(
+          '👥',
+          'Waiting for more competitors',
+          'Share EdgeIQ with your crew so each account can log bets and automatically appear on the leaderboard.',
+          `<button class="btn-secondary" onclick="navigator.clipboard.writeText('${window.location.origin}');showToast('📋 Link copied', false)">Copy invite link</button>`
+        )
       : allEntries.map((e,i)=>{
           const isMe = e.username === currentUser?.username;
           const pos  = e.roi >= 0;
@@ -227,18 +265,23 @@ showLbSport = async function(sport, btn) {
               streakBadge = `<span class="streak-badge" style="background:${color};border:1px solid ${border};color:${textCol}">${icon} ${cnt} ${isWin?'W':'L'}</span>`;
             }
           }
-          return `<div class="lb-card" ${isMe?'style="border-color:rgba(16,185,129,.25);background:linear-gradient(90deg,rgba(240,180,41,.04),var(--bg3))"':''}>
+          return `<div class="lb-card" ${isMe?'style="border-color:rgba(16,185,129,.25);background:linear-gradient(90deg,rgba(40,72,76,.34),rgba(10,18,33,.88))"':''}>
             <div class="lb-rank" style="color:${i<3?rankColors[i]:'var(--muted)'}">${i<3?rankEmoji[i]:'#'+(i+1)}</div>
             <div class="lb-avatar" style="background:${e.color}18;border:1px solid ${e.color}40">${e.avatar}</div>
             <div class="lb-info">
               <div class="lb-name" style="color:${e.color}">${e.username.toUpperCase()}${isMe?'<span class="lb-you">YOU</span>':''}${streakBadge}</div>
-              <div class="lb-meta">${e.totalBets} bets · ${e.wins} wins · ${e.winRate}% WR · ROI ${e.roi}%</div>
+              <div class="lb-meta">${e.totalBets} tracked · ${e.settled} settled · ${e.wins} wins · ${e.winRate}% WR · ROI ${e.roi}%</div>
             </div>
             <div class="lb-pnl" style="color:${pos?'#10b981':'#ef4444'}">${e.roi >= 0 ? '+' : ''}${e.roi}%</div>
           </div>`;
         }).join('');
   } catch(e) {
-    document.getElementById('lb-content').innerHTML = `<div class="empty">Failed to load leaderboard</div>`;
+    if (summaryEl) summaryEl.innerHTML = '';
+    document.getElementById('lb-content').innerHTML = renderStateEmpty(
+      '⚠️',
+      'Could not load leaderboard',
+      'We could not retrieve the latest standings right now. Please try again in a moment.'
+    );
   }
 };
 

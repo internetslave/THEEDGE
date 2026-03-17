@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: edgeiq
+    runtime: node
+    buildCommand: npm install
+    preDeployCommand: npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/health/ready
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: EDGEIQ_STORAGE_MODE
+        value: postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edgeiq-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DATABASE_SSL_REJECT_UNAUTHORIZED
+        value: "true"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LOG_LEVEL
+        value: info
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_BOOTSTRAP_SECRET
+        generateValue: true
+      - key: ODDS_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: RACING_API_USER
+        sync: false
+      - key: RACING_API_PASS
+        sync: false
+
+databases:
+  - name: edgeiq-db
+    databaseName: edgeiq
+    user: edgeiq

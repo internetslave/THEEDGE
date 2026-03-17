@@ -2,7 +2,13 @@
 
 function loadBets() { try { return JSON.parse(localStorage.getItem(BETS_KEY)||'[]'); } catch{return[];} }
 function saveBets() { localStorage.setItem(BETS_KEY, JSON.stringify(bets)); }
+function loadSavedInsights() { try { return JSON.parse(localStorage.getItem(SAVED_INSIGHTS_KEY)||'[]'); } catch{return[];} }
+function persistSavedInsights() { localStorage.setItem(SAVED_INSIGHTS_KEY, JSON.stringify(savedInsights)); }
+function loadOnboardingDismissed() { try { return JSON.parse(localStorage.getItem(ONBOARDING_KEY)||'false'); } catch{return false;} }
+function persistOnboardingDismissed() { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(onboardingDismissed)); }
 bets = loadBets();
+savedInsights = loadSavedInsights();
+onboardingDismissed = loadOnboardingDismissed();
 
 async function fetchVenueWeather(venue) {
   if (venue in weatherCache) return weatherCache[venue];
@@ -129,6 +135,8 @@ function enrichEvent(ev) {
     const distLabel = ev.distanceLabel || (ev.distance ? `${ev.distance}m` : '');
     return {
       ...ev,
+      dataMeta: buildMarketTrustMeta(ev.dataMeta || {}),
+      analysisMeta: ev.analysisMeta || null,
       homeOdds, awayOdds, drawOdds,
       time,
       venue: ev.venue || 'TBC',
@@ -165,6 +173,8 @@ function enrichEvent(ev) {
 
   return {
     ...ev,
+    dataMeta: buildMarketTrustMeta(ev.dataMeta || {}),
+    analysisMeta: buildAnalysisTrustMeta(ev.analysisMeta || ev._meta || {}, confidence),
     homeOdds, awayOdds, drawOdds,
     time,
     venue,
@@ -208,21 +218,30 @@ async function fetchLiveOdds(forceRefresh = false) {
       oddsLoaded = true;
       // Use server cacheAge to set the true time odds were last fetched (not just when client received them)
       oddsLastUpdated = data.cacheAge ? Date.now() - (data.cacheAge * 1000) : Date.now();
+      oddsAsOf = data.asOf || oddsLastUpdated;
+      oddsGeneratedAt = data.generatedAt || Date.now();
+      oddsFreshnessStatus = data.freshnessStatus || 'fresh';
+      oddsFreshnessText = data.freshnessLabel || 'Fresh market snapshot';
+      oddsWarnings = Array.isArray(data.warnings) ? data.warnings : [];
+      oddsSources = Array.isArray(data.sources) ? data.sources : [];
       if (data.nextRefresh)        oddsNextRefresh = data.nextRefresh;
       if (data.creditsRemaining != null) {
         oddsCreditsRemaining = data.creditsRemaining;
         updateCreditsBadge();
       }
       updateLastUpdatedBadge();
+      if (forceRefresh && oddsWarnings.length) {
+        showToast(`⚠️ ${oddsWarnings[0].message}`, false);
+      }
       scheduleNextOddsPoll();
       const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
       if (activePage) showPage(activePage);
     } else {
-      if (!oddsLoaded) showToast('⚠️ No live odds right now — using fallback data', false);
+      if (!oddsLoaded) showToast('⚠️ Odds data is unavailable right now. Saved bets and history are still available.', false);
       scheduleNextOddsPoll();
     }
   } catch(err) {
-    showToast('⚠️ Could not load live odds', false);
+    showToast('⚠️ Odds unavailable right now. Your tracked bets are still available.', false);
     console.error(err);
     scheduleNextOddsPoll();
   } finally {
@@ -257,11 +276,24 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function updateLastUpdatedBadge() {
+  const wrap = document.querySelector('.live-badge');
   const el = document.getElementById('live-badge-text');
   if (!el) return;
-  if (!oddsLastUpdated) { el.textContent = 'LIVE ODDS'; return; }
+  if (wrap) wrap.classList.remove('is-cached', 'is-stale');
+  if (!oddsLastUpdated) { el.textContent = 'MARKET DATA'; return; }
   const mins = Math.floor((Date.now() - oddsLastUpdated) / 60000);
-  el.textContent = mins < 1 ? 'JUST UPDATED' : mins < 60 ? `UPDATED ${mins}m AGO` : `UPDATED ${Math.floor(mins/60)}h AGO`;
+  const ageText = mins < 1 ? 'just refreshed' : mins < 60 ? `${mins}m old` : `${Math.floor(mins/60)}h old`;
+  if (oddsFreshnessStatus === 'stale') {
+    if (wrap) wrap.classList.add('is-stale');
+    el.textContent = `STALE DATA · ${ageText.toUpperCase()}`;
+    return;
+  }
+  if (oddsFreshnessStatus === 'cached') {
+    if (wrap) wrap.classList.add('is-cached');
+    el.textContent = `CACHED DATA · ${ageText.toUpperCase()}`;
+    return;
+  }
+  el.textContent = `VERIFIED DATA · ${ageText.toUpperCase()}`;
 }
 
 function showOddsLoading(show) {
@@ -322,4 +354,3 @@ function getStats(betList) {
   const pending = betList.filter(b=>b.result==='PENDING').length;
   return {wins,settled,ts,tr,profit,roi,winRate,avgOdds,bestWin,pending,total:betList.length};
 }
-

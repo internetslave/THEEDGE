@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="The Edge — AI-powered sports picks, live odds, and bet tracking across AFL, NRL, NBA, Soccer, UFC, Boxing, Greyhounds and Horse Racing.">
+<meta name="description" content="EdgeIQ is a premium sports intelligence dashboard for model-assisted analysis, odds monitoring, bet tracking, tipping competitions, and fantasy planning.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#080b11">
-<title>The Edge — Sports Intelligence Dashboard</title>
+<meta name="theme-color" content="#07111f">
+<title>EdgeIQ — Sports Intelligence Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="premium-suite.css">
 </head>
-<body>
+<body class="suite-app edgeiq-dashboard">
 <a href="#main" class="skip-link">Skip to main content</a>
 
 <!-- ══════════ LOGIN SCREEN ══════════ -->
@@ -20,18 +21,27 @@
   <div class="login-glow"></div>
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logo-mark">TE</div>
+      <div class="login-logo-mark">EI</div>
       <div>
-        <div class="login-logo-name">THE EDGE</div>
-        <div class="login-logo-tag">Sports Intelligence Platform</div>
-      </div>
+      <div class="login-logo-name">EDGEIQ</div>
+      <div class="login-logo-tag">Sports Intelligence Suite</div>
     </div>
-    <div class="login-tagline">AI-powered picks, live odds & bet tracking across 7 sports.</div>
+  </div>
+    <div class="login-tagline">High-trust sports intelligence with model analysis, odds monitoring, leaderboards, and accountable bet tracking.</div>
     <div class="login-features">
-      <div class="login-feature"><span class="login-feature-icon">🤖</span>AI Match Analysis</div>
-      <div class="login-feature"><span class="login-feature-icon">⚡</span>Value Bet Detection</div>
-      <div class="login-feature"><span class="login-feature-icon">📊</span>Full P&L Tracking</div>
-      <div class="login-feature"><span class="login-feature-icon">🏆</span>Leaderboard</div>
+      <div class="login-feature"><span class="login-feature-icon">🤖</span>Model-Assisted Analysis</div>
+      <div class="login-feature"><span class="login-feature-icon">📡</span>Odds & Market Monitoring</div>
+      <div class="login-feature"><span class="login-feature-icon">📊</span>Tracked Performance Analytics</div>
+      <div class="login-feature"><span class="login-feature-icon">🏆</span>Leaderboards & Comps</div>
+    </div>
+    <div class="login-flow">
+      <div class="login-flow-step"><span>1</span>Scan the strongest market signals</div>
+      <div class="login-flow-step"><span>2</span>Log what you actually bet</div>
+      <div class="login-flow-step"><span>3</span>Review analytics, saved ideas, and comps</div>
+    </div>
+    <div class="login-tier-strip">
+      <span class="suite-pill">Starter: slate, tracking, leaderboard</span>
+      <span class="suite-pill">Pro-ready: saved insights, deeper filters, richer analytics</span>
     </div>
     <div class="login-tabs">
       <button class="login-tab active" onclick="showAuthTab('signin')">Sign In</button>
@@ -54,7 +64,7 @@
     </div>
     <div id="auth-signup" style="display:none">
       <div class="login-field"><label for="su-user">Choose a Username</label><input type="text" id="su-user" placeholder="e.g. SharpMate" autocapitalize="none" data-testid="input-new-username"></div>
-      <div class="login-field"><label for="su-email">Recovery Email <span style="color:var(--muted);font-weight:400">(for PIN resets)</span></label><input type="email" id="su-email" placeholder="your@email.com" data-testid="input-signup-email"></div>
+      <div class="login-field"><label for="su-email">Recovery Email <span style="color:var(--muted);font-weight:400">(for account recovery requests)</span></label><input type="email" id="su-email" placeholder="your@email.com" data-testid="input-signup-email"></div>
       <div class="login-field"><label for="su-sport">Favourite Sport</label>
         <select id="su-sport" style="width:100%;background:#080c12;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:13px 16px;font-size:14px;font-family:var(--mono);outline:none">
           <option>AFL</option><option>NRL</option><option>NBA</option><option>Soccer</option><option>UFC</option><option>Boxing</option><option>Greyhound</option><option>Horse Racing</option>
@@ -65,17 +75,17 @@
       <button class="login-btn" onclick="doSignUp()" data-testid="button-signup">CREATE ACCOUNT →</button>
     </div>
     <div class="login-error" id="login-error"></div>
-    <div class="login-note">🔒 Your account & bets are saved securely on the server. Share this app with mates — everyone gets their own account and competes on the leaderboard.</div>
+    <div class="login-note">🔒 Your account and tracked bets are stored on the server. EdgeIQ labels verified data, generated insight, and your own entries separately so performance stays accountable.</div>
   </div>
 </div>
 
 <!-- ── HEADER ── -->
 <div id="header" style="display:none">
   <div class="logo">
-    <div class="logo-mark">TE</div>
+    <div class="logo-mark">EI</div>
     <div>
-      <div class="logo-name">THE EDGE</div>
-      <div class="logo-tag">Sports Intelligence Platform</div>
+      <div class="logo-name">EDGEIQ</div>
+      <div class="logo-tag">Sports Intelligence Suite</div>
     </div>
   </div>
   <nav class="nav">
@@ -87,17 +97,25 @@
     <button class="nav-btn" onclick="showPage('analysis')">Analysis</button>
   </nav>
   <div class="header-right">
-    <div style="display:flex;align-items:center;gap:6px">
-      <div class="live-badge" style="cursor:pointer" onclick="manualRefreshOdds()" title="Click to refresh odds"><div class="live-dot"></div><span id="live-badge-text">LIVE ODDS</span></div>
+    <div class="header-status">
+      <div class="live-badge" style="cursor:pointer" onclick="manualRefreshOdds()" title="Click to refresh market data"><div class="live-dot"></div><span id="live-badge-text">MARKET DATA</span></div>
       <button id="btn-manual-refresh" class="desktop-only" onclick="manualRefreshOdds()" title="Fetch latest odds" aria-label="Refresh odds" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;cursor:pointer;font-family:var(--mono);transition:all .15s;line-height:1" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↻</button>
       <span id="credits-badge" class="desktop-only" style="display:none;font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.5px;opacity:.75" title="Odds API credits remaining"></span>
     </div>
+    <div id="plan-badge" class="suite-plan-badge desktop-only">Starter</div>
+    <div class="suite-switcher desktop-only">
+      <button class="suite-link is-active" onclick="showPage('home')">Dashboard</button>
+      <button class="suite-link" onclick="window.location.href='/tipping'">Tipping</button>
+      <button class="suite-link" onclick="window.location.href='/fantasy'">Fantasy</button>
+    </div>
+    <button class="btn-secondary desktop-only" onclick="openPlanOverview()">Compare plans</button>
     <button class="ai-btn desktop-only" onclick="openAIAnalysis()">AI ANALYSE</button>
-    <button class="desktop-only" onclick="window.location.href='/tipping'" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">TIPPING</button>
-    <button class="desktop-only" onclick="window.location.href='/fantasy'" style="background:linear-gradient(135deg,#065f46,#059669);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">FANTASY</button>
     <div id="user-badge" class="desktop-only" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px">
       <div id="user-avatar" class="emoji" style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px"></div>
-      <div id="user-name" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)"></div>
+      <div>
+        <div id="user-name" style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)"></div>
+        <div id="user-sub" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px"></div>
+      </div>
     </div>
     <button class="desktop-only" onclick="doLogout()" aria-label="Sign out" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:7px 12px;cursor:pointer;font-size:11px;font-family:var(--mono);transition:all .15s" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">logout</button>
     <!-- Mobile-only: avatar button opens user sheet -->
@@ -124,6 +142,11 @@
 
 <!-- ══════════ HOME PAGE ══════════ -->
 <div id="page-home" class="page active">
+  <div id="home-hero"></div>
+  <div id="home-onboarding"></div>
+  <div class="suite-inline-note" style="margin-bottom:20px">EdgeIQ keeps three layers visible throughout the product: verified market data, model-generated insight, and your user-entered bet history.</div>
+  <div id="home-product-grid"></div>
+
   <!-- Stats Row -->
   <div class="grid-4" id="home-stats"></div>
 
@@ -165,8 +188,8 @@
       <div class="ai-panel-header">
         <div class="ai-avatar">🤖</div>
         <div>
-          <div class="ai-title">AI PICKS TODAY</div>
-          <div class="ai-sub">Powered by claude-sonnet-4</div>
+          <div class="ai-title">MODEL SIGNALS</div>
+          <div class="ai-sub">Market data + model interpretation</div>
         </div>
       </div>
       <div class="ai-body" id="ai-picks-panel"></div>
@@ -176,10 +199,18 @@
 
 <!-- ══════════ AI TIPS PAGE ══════════ -->
 <div id="page-tips" class="page">
-  <div class="section-header">
-    <div class="section-title">AI-POWERED TIPS</div>
-    <button class="ai-btn" onclick="openAIAnalysis()">Analyse a Match</button>
+  <div class="page-intro">
+    <div class="page-intro-copy">
+      <div class="page-kicker">Model Output</div>
+      <div class="page-title">AI Signals</div>
+      <div class="page-copy">Separate raw pricing from model-generated interpretation, inspect confidence, and review the rationale before you log or share a position.</div>
+    </div>
+    <div class="page-intro-actions">
+      <button class="ai-btn" onclick="openAIAnalysis()">Analyse a Match</button>
+      <button class="btn-secondary" onclick="showPage('upcoming')">Browse Markets</button>
+    </div>
   </div>
+  <div id="tips-toolbar"></div>
   <!-- Match of the Day on tips page too -->
   <div id="motd-tips"></div>
   <div class="grid-2" id="tips-grid"></div>
@@ -187,18 +218,27 @@
 
 <!-- ══════════ UPCOMING PAGE ══════════ -->
 <div id="page-upcoming" class="page">
-  <div class="section-header">
-    <div class="section-title">UPCOMING MATCHES</div>
+  <div class="page-intro">
+    <div class="page-intro-copy">
+      <div class="page-kicker">Market Board</div>
+      <div class="page-title">Upcoming Match Centre</div>
+      <div class="page-copy">Review the full slate with sport filters, indicative edge signals, and one-click access to deeper match intelligence.</div>
+    </div>
   </div>
+  <div id="upcoming-toolbar"></div>
   <div class="filter-tabs" id="upcoming-filters"></div>
   <div class="card" id="upcoming-table"></div>
 </div>
 
 <!-- ══════════ MY BETS PAGE ══════════ -->
 <div id="page-mybets" class="page">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-    <div class="section-title">MY BET TRACKER</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+  <div class="page-intro">
+    <div class="page-intro-copy">
+      <div class="page-kicker">Performance Tracking</div>
+      <div class="page-title">Bet History & P&amp;L</div>
+      <div class="page-copy">Keep a clean, auditable record of your bets, separate model ideas from actual wagers, and understand where your edge is coming from.</div>
+    </div>
+    <div class="page-intro-actions">
       <button data-testid="button-share-stats" onclick="shareMyStats()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📤 SHARE</button>
       <button onclick="exportBetsCSV()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 16px;cursor:pointer;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">⬇ CSV</button>
       <button class="btn-primary" onclick="openBetForm()">+ LOG BET</button>
@@ -241,9 +281,15 @@
 
 <!-- ══════════ LEADERBOARD PAGE ══════════ -->
 <div id="page-leaderboard" class="page">
-  <div class="section-header">
-    <div class="section-title">LEADERBOARD</div>
+  <div class="page-intro">
+    <div class="page-intro-copy">
+      <div class="page-kicker">Competitive View</div>
+      <div class="page-title">Leaderboard</div>
+      <div class="page-copy">See who is actually performing, who is active, and which accounts are turning tracked bets into repeatable results.</div>
+    </div>
   </div>
+  <div id="lb-profile-rail" style="margin-bottom:18px"></div>
+  <div id="lb-summary" style="margin-bottom:18px"></div>
   <!-- Extras: weekly winner, streaks, records -->
   <div id="lb-extras" style="margin-bottom:20px"></div>
   <!-- Sport filter -->
@@ -264,10 +310,16 @@
 
 <!-- ══════════ ANALYSIS PAGE ══════════ -->
 <div id="page-analysis" class="page">
-  <div class="section-header">
-    <div class="section-title">PERFORMANCE ANALYSIS</div>
+  <div class="page-intro">
+    <div class="page-intro-copy">
+      <div class="page-kicker">Diagnostics</div>
+      <div class="page-title">Performance Analysis</div>
+      <div class="page-copy">Break down your tracked performance by sport, result type, bet type, and model-driven positions so you can see what is truly working.</div>
+    </div>
   </div>
+  <div id="analysis-summary-hero"></div>
   <div class="grid-2" id="analysis-grid"></div>
+  <div id="analysis-plan-hook"></div>
 </div>
 
 </main><!-- /main -->
@@ -305,7 +357,7 @@
       <div class="fg"><label>Bookmaker</label>
         <select id="f-bookie"><option>Sportsbet</option><option>TAB</option><option>Ladbrokes</option><option>Neds</option><option>Pointsbet</option><option>Unibet</option><option>BetEasy</option><option>Other</option></select>
       </div>
-      <div class="fg"><label>AI Confidence %</label><input type="number" id="f-conf" placeholder="72" min="0" max="100"></div>
+      <div class="fg"><label>Signal Confidence %</label><input type="number" id="f-conf" placeholder="72" min="0" max="100"></div>
       <div class="fg"><label>Weather</label>
         <select id="f-weather"><option>Fine</option><option>Cloudy</option><option>Light Rain</option><option>Rain</option><option>Heavy Rain</option><option>Windy</option><option>Overcast</option><option>N/A</option></select>
       </div>
@@ -329,9 +381,9 @@
     <div class="ai-modal-header">
       <div style="display:flex;align-items:center;gap:12px">
         <div class="ai-avatar">🤖</div>
-        <div>
-          <div class="ai-modal-title">AI MATCH ANALYSIS</div>
-          <div style="font-size:11px;color:var(--muted);letter-spacing:1px">claude-sonnet-4-20250514</div>
+          <div>
+            <div class="ai-modal-title">AI MATCH ANALYSIS</div>
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px">User input + model interpretation</div>
         </div>
       </div>
       <button class="form-close" onclick="closeAIModal()" aria-label="Close AI analysis">✕</button>
@@ -392,7 +444,7 @@
     </div>
     <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div id="qb-pick-label" style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">AI PICK</div>
+        <div id="qb-pick-label" style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">MODEL LEAN</div>
         <div id="qb-pick" style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#10b981"></div>
       </div>
       <div style="text-align:right">
@@ -532,7 +584,7 @@
     <div class="sheet-avatar emoji" id="sheet-avatar-el">👤</div>
     <div>
       <div class="sheet-username" id="sheet-username-el">—</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">THE EDGE MEMBER</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">EDGEIQ MEMBER</div>
     </div>
   </div>
   <button class="sheet-btn" onclick="closeUserSheet();openAIAnalysis()">
@@ -597,8 +649,8 @@
 </div>
 
 <footer>
-  <span>THE EDGE · AI-POWERED SPORTS INTELLIGENCE</span>
-  <span>⚠️ For entertainment & personal use only. Not financial advice. Gamble Responsibly — <a href="tel:1800858858" style="color:var(--accent)">1800 858 858</a></span>
+  <span>EDGEIQ · SPORTS INTELLIGENCE SUITE</span>
+  <span>⚠️ For informational and personal tracking use only. Model output is not certainty, odds may be cached, and all wagering decisions remain your responsibility. Gamble Responsibly — <a href="tel:1800858858" style="color:var(--accent)">1800 858 858</a></span>
 </footer>
 
 <!-- ══════════ DISCLAIMER MODAL ══════════ -->
@@ -612,8 +664,8 @@
       </div>
     </div>
     <div style="padding:24px">
-      <p style="color:var(--text);font-size:14px;line-height:1.7;margin-bottom:16px">The Edge is a <strong style="color:#10b981">personal entertainment tool</strong> built for fun between friends. All AI picks, analysis and recommendations are for informational purposes only.</p>
-      <p style="color:var(--text);font-size:14px;line-height:1.7;margin-bottom:16px"><strong style="color:#ef4444">This is NOT financial or betting advice.</strong> Never bet more than you can afford to lose. Past performance does not guarantee future results.</p>
+      <p style="color:var(--text);font-size:14px;line-height:1.7;margin-bottom:16px">EdgeIQ is a <strong style="color:#10b981">sports intelligence and record-keeping tool</strong>. Verified market data, generated model insight, and your own tracked bets are shown separately so the product stays clear about what is sourced, what is inferred, and what is actually yours.</p>
+      <p style="color:var(--text);font-size:14px;line-height:1.7;margin-bottom:16px"><strong style="color:#ef4444">This is not financial or betting advice.</strong> Odds can be cached, AI output can be incomplete, and no result is guaranteed. Never stake more than you can afford to lose.</p>
       <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:20px">
         <div style="font-size:12px;color:var(--muted);line-height:1.7">If gambling is causing problems, call the <strong style="color:var(--text)">National Gambling Helpline: 1800 858 858</strong> (free, 24/7) or visit <strong style="color:var(--text)">gamblinghelponline.org.au</strong></div>
       </div>

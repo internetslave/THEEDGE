@@ -263,13 +263,16 @@ function openMatchModal(matchId) {
   if(!m) return;
 
   const sc = SPORT_COLOR[m.sport]||'#aaa';
+  const dataTrust = buildMarketTrustMeta(m.dataMeta || {});
+  const analysisTrust = buildAnalysisTrustMeta(m.analysisMeta || {}, m.confidence);
   const ai = m.aiReady ? {
     summary: m.summary || m.reasoning || '',
     form: m.form || null,
     headToHead: m.headToHead || '',
     venueEdge: m.venueEdge || '',
     keyFactors: m.keyFactors?.length ? m.keyFactors : (m.keyFactor ? [{icon:'🔑', label:'Key Factor', value: m.keyFactor}] : []),
-    bettingAngle: m.bettingAngle || ''
+    bettingAngle: m.bettingAngle || '',
+    disclaimer: m.disclaimer || '',
   } : null;
   const confCol = confColor(m.confidence);
 
@@ -288,7 +291,9 @@ function openMatchModal(matchId) {
 
   let oddsRow;
   if (m.isRacing && m.runners) {
-    const liveTag = m.isLiveData ? '<span style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:8px">LIVE ODDS</span>' : '';
+    const liveTag = dataTrust.sourceType === 'projected_data'
+      ? '<span style="background:rgba(246,173,85,.12);color:#ffd29f;border:1px solid rgba(246,173,85,.3);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:8px">PROJECTED FIELD</span>'
+      : '<span style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:1px;margin-left:8px">VERIFIED FEED</span>';
     const speedMap = buildSpeedMap(m.runners, m.sport);
     const posCol = { 'Leader':'#00ffa3','On-pace':'#10b981','Midfield':'#3b82f6','Back':'#8b5cf6' };
     oddsRow = `
@@ -338,7 +343,7 @@ function openMatchModal(matchId) {
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">HOME</div>
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">${m.home}</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick===m.home?'#00ffa3':'var(--text)'}">${m.homeOdds||'—'}</div>
-        ${m.pick===m.home?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        ${m.pick===m.home?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ MODEL LEAN</div>`:''}
         ${m.homeOdds?`<button class="slip-add-btn${isInSlip(String(m.id),'H2H',m.home)?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','${m.home.replace(/'/g,"\\'")}',${m.homeOdds},this)">${isInSlip(String(m.id),'H2H',m.home)?'✓ IN SLIP':'+ ADD TO SLIP'}</button>`:''}
       </div>
       ${m.drawOdds?`
@@ -346,14 +351,14 @@ function openMatchModal(matchId) {
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">DRAW</div>
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">Draw</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick==='Draw'?'#00ffa3':'var(--text)'}">${m.drawOdds}</div>
-        ${m.pick==='Draw'?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        ${m.pick==='Draw'?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ MODEL LEAN</div>`:''}
         <button class="slip-add-btn${isInSlip(String(m.id),'H2H','Draw')?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','Draw',${m.drawOdds},this)">${isInSlip(String(m.id),'H2H','Draw')?'✓ IN SLIP':'+ ADD TO SLIP'}</button>
       </div>`:''}
       <div style="flex:1;background:var(--bg);border:1px solid ${m.pick===m.away?'rgba(240,180,41,.4)':'var(--border)'};border-radius:10px;padding:14px;text-align:center">
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">AWAY</div>
         <div style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">${m.away}</div>
         <div style="font-size:22px;font-weight:700;color:${m.pick===m.away?'#00ffa3':'var(--text)'}">${m.awayOdds||'—'}</div>
-        ${m.pick===m.away?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ AI PICK</div>`:''}
+        ${m.pick===m.away?`<div style="font-size:10px;color:#10b981;margin-top:4px;letter-spacing:1px">✓ MODEL LEAN</div>`:''}
         ${m.awayOdds?`<button class="slip-add-btn${isInSlip(String(m.id),'H2H',m.away)?' added':''}" onclick="addToSlip('${m.id}','${_safeMatch}','${m.sport}','H2H','${m.away.replace(/'/g,"\\'")}',${m.awayOdds},this)">${isInSlip(String(m.id),'H2H',m.away)?'✓ IN SLIP':'+ ADD TO SLIP'}</button>`:''}
       </div>
     </div>`;
@@ -363,10 +368,11 @@ function openMatchModal(matchId) {
     <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:12px;padding:16px;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
         <span style="font-size:18px">🤖</span>
-        <span style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;color:#10b981">AI ANALYSIS</span>
+        <span style="font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;color:#10b981">MODEL INTERPRETATION</span>
         <span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:${confCol};font-weight:700">${m.confidence}% CONF</span>
       </div>
       ${ai.summary ? `<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(16,185,129,.12)">${ai.summary}</div>` : ''}
+      ${renderTrustPattern(analysisTrust, { title: 'Generated insight', compact: true })}
       ${(ai.form?.home || ai.form?.away) ? `
       <div style="margin-bottom:14px">
         <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin-bottom:8px">📈 RECENT FORM</div>
@@ -404,13 +410,18 @@ function openMatchModal(matchId) {
       </div>` : ''}
       ${ai.bettingAngle ? `
       <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px">
-        <div style="font-size:10px;color:#10b981;letter-spacing:1.5px;font-weight:700;margin-bottom:4px">💡 BETTING ANGLE</div>
+        <div style="font-size:10px;color:#10b981;letter-spacing:1.5px;font-weight:700;margin-bottom:4px">💡 MARKET VIEW</div>
         <div style="font-size:12px;color:var(--text);line-height:1.7">${formatAIBold(ai.bettingAngle)}</div>
       </div>` : ''}
+      ${ai.disclaimer ? `<div class="trust-note">${ai.disclaimer}</div>` : ''}
     </div>` : `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center">
       <div style="font-size:22px;margin-bottom:8px">🤖</div>
-      <div id="md-ai-loading" style="font-size:11px;color:var(--muted);letter-spacing:1px">Loading AI analysis...</div>
+      <div id="md-ai-loading" style="font-size:11px;color:var(--muted);letter-spacing:1px">Building a model view from the current inputs...</div>
+      <div class="signal-source" style="justify-content:center;margin-top:12px">
+        <span class="signal-chip">User-selected market</span>
+        <span class="signal-chip">Generated insight pending</span>
+      </div>
       <div id="md-fun-fact" style="margin-top:14px;padding:12px;background:rgba(240,180,41,.05);border:1px solid rgba(16,185,129,.12);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6;text-align:left;display:none">
         <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);display:block;margin-bottom:4px">📊 DID YOU KNOW?</span>
         <span id="md-fun-fact-text"></span>
@@ -423,7 +434,15 @@ function openMatchModal(matchId) {
     requestAIAnalysis(m);
   }
 
-  const valueBadge = m.valueBet ? `<div class="value-bet-badge" style="margin-bottom:16px">💰 VALUE BET DETECTED</div>` : '';
+  const valueBadge = m.valueBet ? `<div class="value-bet-badge" style="margin-bottom:16px">💰 Potential value edge</div>` : '';
+  const trustStrip = `
+    ${renderTrustPattern(dataTrust, { title: dataTrust.sourceType === 'projected_data' ? 'Projected race data' : 'Verified market data', compact: true })}
+    <div class="signal-source" style="margin:14px 0">
+      <span class="signal-chip">${m.aiReady ? 'Generated insight loaded' : 'Generated insight pending'}</span>
+      <span class="signal-chip">Log bets separately</span>
+      <span class="signal-chip">User tracking stays separate</span>
+    </div>
+    ${dataTrust.warning ? `<div class="suite-inline-note">${dataTrust.warning}</div>` : ''}`;
 
   const extraMarketsHtml = m.isRacing ? '' : renderExtraMarkets(m);
 
@@ -431,6 +450,7 @@ function openMatchModal(matchId) {
     ${oddsRow}
     ${extraMarketsHtml}
     ${valueBadge}
+    ${trustStrip}
     ${aiSection}
     <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
       <button class="btn-primary" style="flex:1;min-width:120px" onclick="closeMatchModal();openQuickBet('${m.id}')">+ LOG BET</button>
@@ -469,16 +489,30 @@ async function runAIAnalysis() {
     <div class="ai-loading">
       <div class="ai-spinner"></div>
       <div class="ai-loading-text">ANALYSING MATCH DATA...</div>
+      <div class="signal-source" style="justify-content:center">
+        <span class="signal-chip">User-provided scenario</span>
+        <span class="signal-chip">Generated insight incoming</span>
+        <span class="signal-chip">No certainty implied</span>
+      </div>
     </div>`;
 
   try {
+    const eventId = `manual_${sport}_${team1}_${team2}`.toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const res = await fetch('/api/analyse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-session-token': getToken() || '' },
       body: JSON.stringify({
-        home: team1, away: team2, sport,
-        homeOdds: odds1, awayOdds: odds2,
-        comp, venue, context,
+        event: {
+          id: eventId,
+          home: team1,
+          away: team2,
+          sport,
+          homeOdds: odds1,
+          awayOdds: odds2,
+          comp,
+          venue,
+          context,
+        },
       })
     });
     const data = await res.json();
@@ -487,37 +521,44 @@ async function runAIAnalysis() {
     renderAIResult(analysis, team1, team2, sport, odds1, odds2);
   } catch(err) {
     document.getElementById('ai-result-area').innerHTML = `
-      <div style="text-align:center;padding:32px">
-        <div style="font-size:36px;margin-bottom:12px">⚠️</div>
-        <div style="color:var(--red);font-family:var(--mono);margin-bottom:8px">Analysis failed</div>
-        <div style="color:var(--muted);font-size:12px">${err.message}</div>
-        <button class="btn-secondary" style="margin-top:16px" onclick="document.getElementById('ai-input-form').style.display='block';document.getElementById('ai-result-area').style.display='none'">← Try Again</button>
-      </div>`;
+      ${renderStateEmpty(
+        '⚠️',
+        'Analysis failed',
+        err.message,
+        `<button class="btn-secondary" onclick="document.getElementById('ai-input-form').style.display='block';document.getElementById('ai-result-area').style.display='none'">Try again</button>`
+      )}`;
   }
 }
 
 function renderAIResult(a, team1, team2, sport, odds1, odds2) {
   const sc = SPORT_COLOR[sport]||'#10b981';
+  const trustMeta = buildAnalysisTrustMeta(a._meta || {}, a.confidence);
   document.getElementById('ai-result-area').innerHTML = `
     <div class="ai-result">
       <div class="ai-result-header">
         <div style="flex:1">
           <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700">${team1} vs ${team2}</div>
-          <div style="color:var(--muted);font-size:12px;margin-top:2px">${sport}</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:2px">${sport} · user-entered scenario</div>
         </div>
-        ${a.valueBet?`<div class="value-bet-badge" style="padding:4px 10px;font-size:10px">💰 VALUE BET</div>`:''}
+        ${a.valueBet?`<div class="value-bet-badge" style="padding:4px 10px;font-size:10px">💰 Potential value edge</div>`:''}
       </div>
+      <div class="signal-source" style="margin:0 0 16px">
+        <span class="signal-chip">User input</span>
+        <span class="signal-chip">Generated insight</span>
+        <span class="signal-chip">Not a guaranteed result</span>
+      </div>
+      ${renderTrustPattern(trustMeta, { title: 'Generated insight', compact: true })}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <div class="ai-confidence-big">
           <div class="ai-conf-num" style="color:${confColor(a.confidence)}">${a.confidence}%</div>
-          <div class="ai-conf-label">AI Confidence</div>
+          <div class="ai-conf-label">Signal confidence</div>
           <div class="conf-track" style="margin-top:10px"><div class="conf-fill" style="width:${a.confidence}%;background:${confColor(a.confidence)}"></div></div>
         </div>
         <div class="ai-rec">
-          <div class="ai-rec-label">🎯 RECOMMENDATION</div>
+          <div class="ai-rec-label">🎯 MODEL LEAN</div>
           <div class="ai-rec-bet">${a.recommendation}</div>
-          <div class="ai-rec-odds">${a.betType} @ ${a.recommendedOdds}</div>
+          <div class="ai-rec-odds">Reference price @ ${a.recommendedOdds || odds1 || odds2 || 'n/a'}</div>
         </div>
       </div>
 
@@ -538,9 +579,15 @@ function renderAIResult(a, team1, team2, sport, odds1, odds2) {
         </div>
       </div>
 
-      <div class="ai-section">
+      ${a.reasoning ? `<div class="ai-section">
         <div class="ai-section-title">Full Analysis</div>
         <div class="ai-section-body" style="line-height:1.8">${formatAIBold(a.reasoning)}</div>
+      </div>` : ''}
+
+      <div class="signal-source" style="margin-top:12px">
+        <span class="signal-chip">Recommendation: ${a.recommendation}</span>
+        <span class="signal-chip">Confidence: ${a.confidence}%</span>
+        ${a.valueBet ? '<span class="signal-chip">Potential value edge</span>' : '<span class="signal-chip">No explicit value edge flagged</span>'}
       </div>
 
       <div style="display:flex;gap:10px;margin-top:16px">
@@ -548,7 +595,7 @@ function renderAIResult(a, team1, team2, sport, odds1, odds2) {
         <button class="btn-secondary" onclick="document.getElementById('ai-input-form').style.display='block';document.getElementById('ai-result-area').style.display='none'">← New Analysis</button>
       </div>
 
-      <div class="ai-disclaimer">${a.disclaimer}</div>
+      <div class="ai-disclaimer">${a.disclaimer || 'AI-generated analysis should be treated as guidance, not certainty.'}</div>
     </div>`;
 }
 

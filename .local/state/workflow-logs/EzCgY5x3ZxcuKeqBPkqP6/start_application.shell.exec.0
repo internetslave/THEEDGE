@@ -1,0 +1,24 @@
+[loadStore] status=200 length=61136
+[Odds restore] persisted sports: [aussierules_afl, rugbyleague_nrl, soccer_australia_aleague, soccer_epl, mma_mixed_martial_arts, boxing_boxing, basketball_nba]
+  ✗ aussierules_afl (697min old — stale, pruned)
+  ✗ rugbyleague_nrl (697min old — stale, pruned)
+  ✗ soccer_australia_aleague (697min old — stale, pruned)
+  ✗ soccer_epl (697min old — stale, pruned)
+  ✗ mma_mixed_martial_arts (697min old — stale, pruned)
+  ✗ boxing_boxing (697min old — stale, pruned)
+  ✗ basketball_nba (697min old — stale, pruned)
+✅ Store loaded — 14 users | AI cache: 5 warm | Odds: 0/7 sports cached (stale, will re-fetch)
+EdgeIQ running on port 5000
+DB:  ✓ JSONBin connected | users=14
+Odds API:      ✓
+Anthropic API: ✓
+[Odds API] credits used=246 remaining=254 sport=aussierules_afl
+[Odds API] credits used=247 remaining=253 sport=rugbyleague_nrl
+[Odds API] credits used=248 remaining=252 sport=soccer_australia_aleague
+[Odds API] credits used=249 remaining=251 sport=soccer_epl
+[Odds API] credits used=250 remaining=250 sport=mma_mixed_martial_arts
+[Odds API] credits used=251 remaining=249 sport=boxing_boxing
+[Odds API] credits used=252 remaining=248 sport=basketball_nba
+[Odds] persisting 7 sports to store: [aussierules_afl, rugbyleague_nrl, soccer_australia_aleague, soccer_epl, mma_mixed_martial_arts, boxing_boxing, basketball_nba]
+Racing API failed, using horse fallback: Racing API 401: Unauthorized
+Racing API failed, using horse fallback: Racing API 401: Unauthorized

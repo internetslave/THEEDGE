@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#f8f7f4">
-<title>FieldIQ — Fantasy Sports Advisor</title>
+<meta name="theme-color" content="#07111f">
+<title>EdgeIQ Fantasy</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── ROOT ── */
 :root {
@@ -496,20 +496,21 @@ body {
 .fiq-history-item:last-child { border-bottom:none; }
 .fiq-history-item:hover { background:var(--bg); border-radius:8px; padding-left:8px; }
 </style>
+<link rel="stylesheet" href="/premium-suite.css">
 </head>
-<body>
+<body class="suite-app edgeiq-fantasy">
 
 <!-- ── HEADER ── -->
 <div id="fiq-header">
   <div class="fiq-logo">
-    <div class="fiq-logo-mark">🏆</div>
+    <div class="fiq-logo-mark">EI</div>
     <div>
-      <div class="fiq-logo-name">FieldIQ</div>
-      <div class="fiq-logo-tag">Fantasy Sports Advisor</div>
+      <div class="fiq-logo-name">EdgeIQ Fantasy</div>
+      <div class="fiq-logo-tag">Fantasy Intelligence Suite</div>
     </div>
   </div>
   <button class="back-btn" onclick="goBack()">
-    ← Back to The Edge
+    ← Back to EdgeIQ
   </button>
 </div>
 
@@ -530,6 +531,38 @@ body {
 
 <!-- ── MAIN ── -->
 <div id="fiq-main">
+  <section class="suite-subproduct-hero">
+    <div class="suite-subproduct-panel">
+      <div class="subproduct-kicker">Fantasy Layer</div>
+      <div class="subproduct-title">Sharper fantasy decisions with a cleaner, more credible UI.</div>
+      <div class="subproduct-copy">Compare players, evaluate trades, track your squad, and assess injuries inside a dark premium workspace that matches the rest of the EdgeIQ suite.</div>
+      <div class="suite-pills">
+        <span class="suite-pill">Start/Sit advice</span>
+        <span class="suite-pill">Waiver & trade analysis</span>
+        <span class="suite-pill">Team tracker</span>
+      </div>
+      <div class="suite-inline-note" style="margin-top:16px">Fantasy guidance is generated insight based on your inputs. Use it as a second opinion, then confirm late team news and role changes before lockout.</div>
+    </div>
+    <div class="suite-subproduct-side">
+      <div class="suite-subproduct-grid">
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Decisioning</div>
+          <div class="suite-stat-value">Start</div>
+          <div class="suite-stat-foot">Use model guidance to break close lineup calls with clearer rationale.</div>
+        </div>
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Acquisition</div>
+          <div class="suite-stat-value">Waivers</div>
+          <div class="suite-stat-foot">Identify pickups and trade edges without leaving the product.</div>
+        </div>
+        <div class="suite-subproduct-card">
+          <div class="suite-stat-label">Management</div>
+          <div class="suite-stat-value">Track</div>
+          <div class="suite-stat-foot">Keep your squad, injuries, and seasonal context together.</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ══ START/SIT ══ -->
   <div id="fiq-page-startsit" class="fiq-page active">
@@ -541,7 +574,7 @@ body {
     <div class="fiq-card">
       <div class="fiq-card-header">
         <div class="fiq-card-title">Compare Two Players</div>
-        <span id="ss-sport-pill" class="sport-pill" style="background:#e8f0fb;color:#1d3461;border:1px solid #b8cef0">🏉 AFL</span>
+        <span id="ss-sport-pill" class="sport-pill">🏉 AFL</span>
       </div>
       <div class="fiq-card-body">
         <div class="fiq-grid-2" style="margin-bottom:20px">
@@ -595,7 +628,7 @@ body {
     <div class="fiq-card">
       <div class="fiq-card-header">
         <div class="fiq-card-title">Find Your Best Pickup</div>
-        <span id="ww-sport-pill" class="sport-pill" style="background:#e8f0fb;color:#1d3461;border:1px solid #b8cef0">🏉 AFL</span>
+        <span id="ww-sport-pill" class="sport-pill">🏉 AFL</span>
       </div>
       <div class="fiq-card-body">
         <div class="fiq-field">
@@ -636,7 +669,7 @@ body {
     <div class="fiq-card">
       <div class="fiq-card-header">
         <div class="fiq-card-title">Analyse a Trade Offer</div>
-        <span id="ta-sport-pill" class="sport-pill" style="background:#e8f0fb;color:#1d3461;border:1px solid #b8cef0">🏉 AFL</span>
+        <span id="ta-sport-pill" class="sport-pill">🏉 AFL</span>
       </div>
       <div class="fiq-card-body">
         <div class="fiq-grid-2" style="margin-bottom:20px">
@@ -795,8 +828,8 @@ function setSport(sport, btn) {
 function updateSportPills() {
   const isAFL = currentSport === 'afl';
   const pillHTML = isAFL
-    ? '<span class="sport-pill" style="background:#e8f0fb;color:#1d3461;border:1px solid #b8cef0">🏉 AFL</span>'
-    : '<span class="sport-pill" style="background:#e8f7ee;color:#1d4631;border:1px solid #b0d8c0">🏈 NRL</span>';
+    ? '<span class="sport-pill">🏉 AFL</span>'
+    : '<span class="sport-pill">🏈 NRL</span>';
   ['ss','ww','ta'].forEach(id => {
     const el = document.getElementById(id + '-sport-pill');
     if (el) el.outerHTML = pillHTML.replace('class="sport-pill"', `id="${id}-sport-pill" class="sport-pill"`);
@@ -849,19 +882,25 @@ async function askClaude(prompt, containerId, title) {
           <div class="fiq-result-icon">🤖</div>
           <div>
             <div class="fiq-result-title">${title}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">Powered by Claude AI · ${new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Generated guidance · ${new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}</div>
           </div>
         </div>
+        <div class="signal-source" style="margin:0 0 16px">
+          <span class="signal-chip">User-entered inputs</span>
+          <span class="signal-chip">Generated insight</span>
+          <span class="signal-chip">Verify late team news</span>
+        </div>
         <div class="fiq-result-body">${text}</div>
+        <div class="trust-note">This is a model-generated second opinion based on the inputs above. Confirm final team selection, injuries, and role changes before lockout.</div>
         <button class="fiq-btn-secondary" onclick="this.closest('.fiq-result').remove()" style="margin-top:16px;font-size:12px">Clear</button>
       </div>`;
     return text;
   } catch (err) {
     el.innerHTML = `
-      <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:20px;margin-top:16px;text-align:center">
+      <div style="background:rgba(248,113,113,.08);border:1.5px solid rgba(248,113,113,.28);border-radius:18px;padding:20px;margin-top:16px;text-align:center;box-shadow:0 12px 28px rgba(2,8,23,.18)">
         <div style="font-size:28px;margin-bottom:8px">⚠️</div>
-        <div style="font-weight:600;color:#991b1b;margin-bottom:4px">Analysis failed</div>
-        <div style="font-size:13px;color:#b91c1c">${err.message}</div>
+        <div style="font-weight:700;color:#fecaca;margin-bottom:4px">Fantasy guidance unavailable</div>
+        <div style="font-size:13px;color:#fca5a5">${err.message || 'The AI guidance service is temporarily unavailable. Your saved squad data is unaffected.'}</div>
       </div>`;
     return null;
   }

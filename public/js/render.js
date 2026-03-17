@@ -1,5 +1,337 @@
 // THE EDGE — RENDERERS
 
+function oddsFreshnessLabel() {
+  if (!oddsLastUpdated) return 'awaiting market data';
+  const mins = Math.floor((Date.now() - oddsLastUpdated) / 60000);
+  const age = mins < 1 ? 'just refreshed' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+  if (oddsFreshnessStatus === 'stale') return `stale snapshot · ${age}`;
+  if (oddsFreshnessStatus === 'cached') return `cached snapshot · ${age}`;
+  return `verified snapshot · ${age}`;
+}
+
+function renderStateEmpty(icon, title, copy, actions = '') {
+  return `
+    <div class="state-empty">
+      <div class="state-icon">${icon}</div>
+      <div class="state-title">${title}</div>
+      <div class="state-copy">${copy}</div>
+      ${actions ? `<div class="state-actions">${actions}</div>` : ''}
+    </div>`;
+}
+
+function renderLoadingStack(count = 3, height = 132) {
+  return `<div class="loading-stack">${Array.from({ length: count }, () => `<div class="skeleton-card" style="min-height:${height}px"></div>`).join('')}</div>`;
+}
+
+function getProductPlans() {
+  return {
+    starter: [
+      'Live market board with trust labels',
+      'AI signal review and match analysis',
+      'Bet tracking, ROI, and history',
+      'Leaderboard and tipping access',
+    ],
+    pro: [
+      'Saved insight stack and watchlist workflow',
+      'Advanced signal filters and faster decision views',
+      'Richer analytics across confidence, value, and AI-assisted bets',
+      'Premium comps, sharper profile identity, and community polish',
+    ],
+    later: [
+      'Private team rooms and invite-only comps',
+      'Alerts, saved views, and scheduled digests',
+      'More export/reporting surfaces for serious bettors',
+    ],
+  };
+}
+
+function renderSavedInsightsStack({ compact = false, limit = 4 } = {}) {
+  const insights = savedInsights.slice(0, limit);
+  if (!insights.length) {
+    return `
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-kicker">Saved Insight Stack</div>
+            <div class="product-title">Nothing saved yet</div>
+          </div>
+          <span class="product-pill">Pro cue</span>
+        </div>
+        <div class="product-copy">Save high-conviction signals and race cards you want to revisit later. This is a strong paid-tier behavior because it turns a dashboard into a workflow.</div>
+      </div>`;
+  }
+
+  return `
+    <div class="product-card">
+      <div class="product-card-head">
+        <div>
+          <div class="product-kicker">Saved Insight Stack</div>
+          <div class="product-title">${savedInsights.length} signal${savedInsights.length === 1 ? '' : 's'} worth revisiting</div>
+        </div>
+        <button class="btn-secondary" onclick="showPage('tips')">Open signals</button>
+      </div>
+      <div class="saved-insight-list${compact ? ' compact' : ''}">
+        ${insights.map((item) => `
+          <button class="saved-insight-card" onclick="openMatchModal('${item.id}')">
+            <div class="saved-insight-top">
+              <span class="signal-chip">${item.sport}</span>
+              ${item.valueBet ? '<span class="signal-chip">Value edge</span>' : '<span class="signal-chip">Saved view</span>'}
+            </div>
+            <div class="saved-insight-title">${item.home} vs ${item.away}</div>
+            <div class="saved-insight-copy">${item.pick} · ${item.confidence}% confidence · saved ${formatRelativeTime(item.savedAt)}</div>
+          </button>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderHomeOnboarding() {
+  const el = document.getElementById('home-onboarding');
+  if (!el) return;
+
+  const shouldShow = !onboardingDismissed || bets.length === 0;
+  if (!shouldShow && !savedInsights.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="product-grid product-grid-tight" style="margin-bottom:20px">
+      ${shouldShow ? `
+        <section class="onboarding-card">
+          <div class="product-card-head">
+            <div>
+              <div class="product-kicker">First-Time Flow</div>
+              <div class="product-title">How EdgeIQ earns a paid seat</div>
+            </div>
+            <button class="dismiss-link" onclick="dismissOnboarding()">Dismiss</button>
+          </div>
+          <div class="product-copy">Use EdgeIQ in a clean sequence: scan the slate, save the strongest ideas, log only the bets you actually place, then review which signals and sports are truly paying off.</div>
+          <div class="onboarding-steps">
+            <div class="onboarding-step"><span>01</span><div><strong>Scan</strong><small>Start on Home or AI Signals for the highest-value slate summary.</small></div></div>
+            <div class="onboarding-step"><span>02</span><div><strong>Save</strong><small>Star the markets you want to revisit before kickoff or race jump.</small></div></div>
+            <div class="onboarding-step"><span>03</span><div><strong>Track</strong><small>Log the real bet so EdgeIQ can separate theory from your actual performance.</small></div></div>
+          </div>
+        </section>` : ''}
+      ${renderSavedInsightsStack({ compact: true, limit: 3 })}
+    </div>`;
+}
+
+function renderHomeProductGrid() {
+  const el = document.getElementById('home-product-grid');
+  if (!el) return;
+  const plans = getProductPlans();
+  el.innerHTML = `
+    <div class="product-grid" style="margin-bottom:24px">
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-kicker">Product Positioning</div>
+            <div class="product-title">Sports intelligence for accountable bettors and sharper comps</div>
+          </div>
+          <span class="product-pill">Clearer than “AI picks”</span>
+        </div>
+        <div class="product-copy">The strongest commercial angle in this codebase is not “guaranteed winners.” It is disciplined sports intelligence: trusted market context, model interpretation, accountable tracking, and competitive community surfaces.</div>
+        <div class="product-bullets">
+          <span>Verified data stays distinct from generated views</span>
+          <span>Tracked bets create retention and real performance history</span>
+          <span>Tipping and fantasy broaden community and product depth</span>
+        </div>
+      </div>
+      <div class="plan-card starter">
+        <div class="plan-tier">Starter</div>
+        <div class="plan-title">Free layer that proves value fast</div>
+        <div class="plan-copy">Enough access to understand the product, trust the data model, and start logging outcomes.</div>
+        <div class="plan-list">${plans.starter.map((item) => `<div class="plan-row">• ${item}</div>`).join('')}</div>
+      </div>
+      <div class="plan-card pro">
+        <div class="plan-tier">EdgeIQ Pro</div>
+        <div class="plan-title">Paid layer focused on workflow and sharper decision support</div>
+        <div class="plan-copy">Package the features serious users come back for every day: saved signals, richer analytics, and more premium community/status surfaces.</div>
+        <div class="plan-list">${plans.pro.map((item) => `<div class="plan-row">• ${item}</div>`).join('')}</div>
+      </div>
+    </div>`;
+}
+
+function renderSignalWorkbench(targetId, page = 'tips') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const filters = advancedSignalFilters;
+  const chip = (key, value, label) => `
+    <button class="signal-filter-chip${filters[key] === value ? ' active' : ''}" onclick="setAdvancedSignalFilter('${key}','${value}','${page}')">${label}</button>`;
+
+  el.innerHTML = `
+    <section class="workbench-card">
+      <div class="product-card-head">
+        <div>
+          <div class="product-kicker">Signal Workbench</div>
+          <div class="product-title">Faster ways to sort the slate</div>
+        </div>
+        <span class="product-pill">Strong Pro candidate</span>
+      </div>
+      <div class="product-copy">Advanced filters, saved insight stacks, and faster decision views are already latent in the product. They are the cleanest conversion hooks in this frontend.</div>
+      <div class="signal-workbench-grid">
+        <div><div class="signal-workbench-label">Confidence</div><div class="signal-filter-row">${chip('confidence', 'all', 'All')} ${chip('confidence', 'plus', '65%+')} ${chip('confidence', 'high', '75%+')}</div></div>
+        <div><div class="signal-workbench-label">Edge type</div><div class="signal-filter-row">${chip('edge', 'all', 'All')} ${chip('edge', 'value', 'Value')} ${chip('edge', 'ai', 'AI-ready')}</div></div>
+        <div><div class="signal-workbench-label">Data freshness</div><div class="signal-filter-row">${chip('freshness', 'all', 'All')} ${chip('freshness', 'trusted', 'Not stale')} ${chip('freshness', 'fresh', 'Fresh only')}</div></div>
+      </div>
+    </section>`;
+}
+
+function renderLeaderboardProfileRail() {
+  const el = document.getElementById('lb-profile-rail');
+  if (!el || !currentUser) return;
+  const stats = getStats(bets);
+  el.innerHTML = `
+    <div class="product-grid product-grid-tight">
+      <div class="profile-rail-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-kicker">Profile & Status</div>
+            <div class="product-title">${currentUser.avatar} ${currentUser.username.toUpperCase()}</div>
+          </div>
+          <span class="product-pill">Starter active</span>
+        </div>
+        <div class="profile-rail-meta">
+          <span>${currentUser.sport || 'All sports'} focus</span>
+          <span>${bets.length} tracked bets</span>
+          <span>${savedInsights.length} saved insights</span>
+          <span>${stats.winRate}% win rate</span>
+        </div>
+      </div>
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-kicker">Premium Community Cue</div>
+            <div class="product-title">Private comps and sharper identities belong in Pro</div>
+          </div>
+          <button class="btn-secondary" onclick="window.location.href='/tipping'">Open tipping</button>
+        </div>
+        <div class="product-copy">This repo already has the right building blocks for a paid community layer: accounts, tracked performance, tipping rounds, comps, badges, and premium-looking leaderboard surfaces.</div>
+      </div>
+    </div>`;
+}
+
+function renderAnalysisSummaryHero(allStats, aiStats) {
+  const el = document.getElementById('analysis-summary-hero');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="product-grid product-grid-tight" style="margin-bottom:20px">
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-kicker">Analytics Positioning</div>
+            <div class="product-title">The analytics layer is the cleanest path to paid retention</div>
+          </div>
+          <span class="product-pill">Conversion-ready</span>
+        </div>
+        <div class="analytics-chip-grid">
+          <div class="analytics-chip"><strong>${allStats.settled.length}</strong><span>Settled bets</span></div>
+          <div class="analytics-chip"><strong>${allStats.roi}%</strong><span>Overall ROI</span></div>
+          <div class="analytics-chip"><strong>${aiStats.roi}%</strong><span>AI-assisted ROI</span></div>
+          <div class="analytics-chip"><strong>${savedInsights.length}</strong><span>Saved signals</span></div>
+        </div>
+      </div>
+      ${renderSavedInsightsStack({ compact: true, limit: 2 })}
+    </div>`;
+}
+
+function renderPlanHook() {
+  const el = document.getElementById('analysis-plan-hook');
+  if (!el) return;
+  const plans = getProductPlans();
+  el.innerHTML = `
+    <section class="plan-hook-card">
+      <div class="product-card-head">
+        <div>
+          <div class="product-kicker">Packaging Recommendation</div>
+          <div class="product-title">What belongs in paid v1 vs later tiers</div>
+        </div>
+      </div>
+      <div class="plan-hook-grid">
+        <div class="plan-card starter">
+          <div class="plan-tier">Paid v1</div>
+          <div class="plan-title">Focus on workflow, filters, and analytics</div>
+          <div class="plan-list">${plans.pro.map((item) => `<div class="plan-row">• ${item}</div>`).join('')}</div>
+        </div>
+        <div class="plan-card muted">
+          <div class="plan-tier">Later tier</div>
+          <div class="plan-title">Expand into teams, alerts, and private rooms</div>
+          <div class="plan-list">${plans.later.map((item) => `<div class="plan-row">• ${item}</div>`).join('')}</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderHomeHero() {
+  const el = document.getElementById('home-hero');
+  if (!el) return;
+
+  const stats = getStats(bets);
+  const activeFilter = currentSport === 'all' ? 'All sports' : (SPORT_FILTER_MAP[currentSport] || 'All sports');
+  const topSignal = UPCOMING
+    .filter(m => matchesSportFilter(m.sport, currentSport) && m.aiReady)
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+  const coverage = UPCOMING.filter(m => m.aiReady).length;
+  const marketMeta = buildMarketTrustMeta();
+  const signalMeta = topSignal ? buildAnalysisTrustMeta(topSignal.analysisMeta || {}, topSignal.confidence) : null;
+  const topSignalCopy = topSignal
+    ? `${topSignal.pick} is the strongest current model lean in ${topSignal.sport}, with ${topSignal.confidence}% calibrated confidence.`
+    : 'Signals will appear here once the next market snapshot is available.';
+
+  el.innerHTML = `
+    <section class="suite-hero">
+      <div class="suite-hero-panel">
+        <div class="suite-kicker">EdgeIQ Control Room</div>
+        <div class="suite-title">A premium sports intelligence workspace for accountable betting decisions.</div>
+        <div class="suite-copy">EdgeIQ is strongest when it behaves like a decision product, not a hype feed: trusted market snapshots, model interpretation, saved ideas, tracked bets, and competitive proof that people can actually come back to daily.</div>
+        <div class="suite-hero-actions">
+          <button class="btn-primary" onclick="openAIAnalysis()">Run a match analysis</button>
+          <button class="btn-secondary" onclick="openPlanOverview()">Compare Starter vs Pro</button>
+        </div>
+        <div class="suite-pills">
+          <span class="suite-pill">Odds ${oddsFreshnessLabel()}</span>
+          <span class="suite-pill">${coverage} AI-ready markets</span>
+          <span class="suite-pill">${activeFilter} focus</span>
+        </div>
+        ${oddsWarnings.length ? `<div class="suite-inline-note">${oddsWarnings[0].message}</div>` : ''}
+      </div>
+      <div class="suite-hero-side">
+        <div class="suite-stat-grid">
+          <div class="suite-stat">
+            <div class="suite-stat-label">Tracked P&amp;L</div>
+            <div class="suite-stat-value" style="color:${stats.profit >= 0 ? '#7ef7d2' : '#fca5a5'}">${fmtPnl(stats.profit)}</div>
+            <div class="suite-stat-foot">${stats.settled.length} settled bets across your history.</div>
+          </div>
+          <div class="suite-stat">
+            <div class="suite-stat-label">Open Positions</div>
+            <div class="suite-stat-value">${stats.pending}</div>
+            <div class="suite-stat-foot">${stats.total} total logged bets with pending results isolated.</div>
+          </div>
+          <div class="suite-stat">
+            <div class="suite-stat-label">Market Coverage</div>
+            <div class="suite-stat-value">${UPCOMING.length}</div>
+            <div class="suite-stat-foot">${coverage} markets already include model-backed reasoning.</div>
+          </div>
+          <div class="suite-stat">
+            <div class="suite-stat-label">Top Signal</div>
+            <div class="suite-stat-value" style="font-size:22px">${topSignal ? `${topSignal.confidence}%` : 'Pending'}</div>
+            <div class="suite-stat-foot">${topSignalCopy}</div>
+          </div>
+        </div>
+        <div class="suite-trust-list" style="margin-top:14px">
+          ${renderTrustPattern(marketMeta, { title: 'Verified market data', compact: true })}
+          ${signalMeta
+            ? renderTrustPattern(signalMeta, { title: 'Generated insight', compact: true })
+            : `<div class="suite-trust-card"><div class="suite-trust-title">Generated insight</div><div class="suite-trust-copy">Model views appear only after the analysis layer is ready, and they stay distinct from sourced odds and your own results.</div></div>`}
+          <div class="suite-trust-card">
+            <div class="suite-trust-title">Tracked results</div>
+            <div class="suite-trust-copy">Your bet log records what you actually entered and whether it has settled, so performance never gets confused with model suggestions.</div>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
 function renderQuickStart() {
   const el = document.getElementById('home-quickstart');
   if (!el) return;
@@ -19,14 +351,14 @@ function renderQuickStart() {
   const isValue = !!m.valueBet;
 
   const introLines = isValue
-    ? `Our AI spotted a <strong style="color:#10b981">value edge</strong> — the odds on offer are better than the true probability suggests. A favourite pick for sharps.`
-    : `Our AI's <strong style="color:#10b981">top confidence pick</strong> right now. Click to see the full analysis before placing a bet.`;
+    ? `Current model lean with a possible <strong style="color:#10b981">value gap</strong> between the available price and the model view. Review the full context before acting.`
+    : `Highest-confidence model lean in the current slate. Open the full view to inspect sources, freshness, and uncertainty before logging anything.`;
 
   el.innerHTML = `
     <div class="qs-strip" onclick="openMatchModal('${m.id}')">
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        <div class="qs-badge">${isValue ? '⚡ BEST VALUE RIGHT NOW' : '🎯 TOP PICK RIGHT NOW'}</div>
-        <div class="qs-label">AI PICK</div>
+        <div class="qs-badge">${isValue ? '⚡ POSSIBLE VALUE EDGE' : '🎯 TOP MODEL LEAN'}</div>
+        <div class="qs-label">MODEL VIEW</div>
         <div class="qs-pick">${m.pick}</div>
         ${oddsVal ? `<div class="qs-odds">@ ${oddsVal}x</div>` : ''}
         <div class="qs-conf">${m.confidence}% confidence</div>
@@ -50,6 +382,14 @@ function renderQuickStart() {
 function renderHome() {
   const s = getStats(bets);
   const pos = s.profit >= 0;
+  const planBadge = document.getElementById('plan-badge');
+  if (planBadge) {
+    planBadge.textContent = savedInsights.length || bets.length >= 5 ? 'Starter active' : 'Starter';
+  }
+
+  renderHomeHero();
+  renderHomeOnboarding();
+  renderHomeProductGrid();
 
   // Stats
   document.getElementById('home-stats').innerHTML = [
@@ -68,14 +408,15 @@ function renderHome() {
   const filtered = UPCOMING.filter(m=>matchesSportFilter(m.sport, currentSport));
   const today = filtered.filter(m=>m.time.startsWith('Today'));
   document.getElementById('home-matches').innerHTML = !oddsLoaded
-    ? `<div style="display:flex;flex-direction:column;gap:10px">${[1,2,3].map(()=>`<div class="loading-shimmer" style="height:130px;border-radius:12px"></div>`).join('')}</div>`
+    ? renderLoadingStack(3, 136)
     : today.length
       ? today.map(m=>matchCard(m)).join('')
-      : `<div class="empty" style="padding:40px;text-align:center">
-          <div style="font-size:36px;margin-bottom:12px">📅</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;margin-bottom:8px">NO MATCHES TODAY</div>
-          <div style="color:var(--muted);font-size:13px">Check the <a href="#" onclick="showPage('upcoming')" style="color:var(--accent)">Upcoming tab</a> to see what's coming up</div>
-        </div>`;
+      : renderStateEmpty(
+          '📅',
+          'No matches in this view',
+          'There are no fixtures matching the current filter right now. Open the market board to inspect the broader slate.',
+          `<button class="btn-secondary" onclick="showPage('upcoming')">Open market board</button>`
+        );
 
   // Recent bets
   const recent = [...bets].reverse().slice(0,5);
@@ -92,7 +433,12 @@ function renderHome() {
           <td style="font-family:var(--mono);font-weight:700;color:${pnl>=0?'#10b981':'#ef4444'}">${fmtPnl(pnl)}</td>
         </tr>`;}).join('')}</tbody>
       </table>`
-    : `<div class="empty">No bets logged yet — <a href="#" onclick="showPage('mybets')" style="color:var(--accent)">log your first bet</a></div>`;
+    : renderStateEmpty(
+        '📒',
+        'No tracked bets yet',
+        'Start logging your wagers so EdgeIQ can compare model ideas against real performance.',
+        `<button class="btn-primary" onclick="openBetForm()">Log your first bet</button>`
+      );
 
   // Best Bet / Quick Start strip
   renderQuickStart();
@@ -156,9 +502,9 @@ function matchCard(m) {
           ${m.valueBet&&m.pick===m.away?`<div class="value-flag">⚡ VALUE</div>`:''}
         </div>` : ''}
         <div class="odd-btn" style="background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.25)" onclick="selectOdd(this,'${m.id}')">
-          <div class="odd-label" style="color:#10b981">${m.aiReady ? '🤖 AI PICK' : '📊 EST. PICK'}</div>
+          <div class="odd-label" style="color:#10b981">${m.aiReady ? '🤖 MODEL LEAN' : '📊 PROJECTED LEAN'}</div>
           <div class="odd-price" style="color:#10b981;font-size:14px">${m.pick}</div>
-          <div class="value-flag" style="color:${confColor(m.confidence)}">${m.confidence}% conf${m.aiReady ? '' : ' ·  loading...'}</div>
+          <div class="value-flag" style="color:${confColor(m.confidence)}">${m.confidence}% conf${m.aiReady ? '' : ' · estimating...'}</div>
         </div>
       </div>
     </div>
@@ -167,46 +513,64 @@ function matchCard(m) {
 
 
 function renderAIPicks() {
-  const top = UPCOMING.filter(m=>m.confidence>=65).sort((a,b)=>b.confidence-a.confidence).slice(0,5);
+  const top = UPCOMING.filter(m=>m.aiReady && m.confidence>=65).sort((a,b)=>b.confidence-a.confidence).slice(0,5);
   document.getElementById('ai-picks-panel').innerHTML = top.map(m=>{
     const sc = SPORT_COLOR[m.sport]||'#aaa';
-    return `<div class="ai-pick">
-      <div class="ai-pick-sport" style="color:${sc}">${m.sport} · ${m.venue}</div>
-      <div class="ai-pick-match">${(m.sport==='Greyhound'||m.sport==='Horse Racing') ? `R${m.raceNumber} · ${m.venue}` : `${m.home} vs ${m.away}`}</div>
-      <div class="ai-pick-tip">🎯 ${m.pick}${m.valueBet?'<span class="value-chip">⚡ VALUE</span>':''}</div>
-      <div class="confidence-bar">
-        <div class="confidence-label">
-          <span>Confidence</span>
-          <span style="color:${confColor(m.confidence)}">${m.confidence}%</span>
+    const analysisMeta = buildAnalysisTrustMeta(m.analysisMeta || {}, m.confidence);
+    return `<div class="signal-card">
+      <div class="signal-head">
+        <div>
+          <div class="ai-pick-sport" style="color:${sc}">${m.sport} · ${m.venue}</div>
+          <div class="signal-title">${(m.sport==='Greyhound'||m.sport==='Horse Racing') ? `R${m.raceNumber} · ${m.venue}` : `${m.home} vs ${m.away}`}</div>
         </div>
-        <div class="conf-track"><div class="conf-fill" style="width:${m.confidence}%;background:${confColor(m.confidence)}"></div></div>
+        <span class="signal-chip" style="color:${confColor(m.confidence)}">${m.confidence}% confidence</span>
       </div>
-      <div class="ai-reasoning">
-        ${aiReasoning(m)}
+      <div class="signal-pick">
+        <div>
+          <div class="suite-stat-label">Model lean</div>
+          <div class="signal-title" style="font-size:18px">${m.pick}</div>
+        </div>
+        ${m.valueBet ? '<div class="value-bet-badge">Potential value edge</div>' : '<span class="signal-chip">Signal only</span>'}
       </div>
+      <div class="signal-copy">${aiReasoning(m)}</div>
+      <div class="signal-source">
+        <span class="signal-chip">Odds ${oddsFreshnessLabel()}</span>
+        <span class="signal-chip">Generated insight</span>
+        <span class="signal-chip">Tap for full context</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn-secondary" onclick="event.stopPropagation();toggleSavedInsight('${m.id}')">${isInsightSaved(m.id) ? '★ Saved insight' : '☆ Save insight'}</button>
+        <button class="btn-secondary" onclick="event.stopPropagation();openBetFormWithMatch('${m.id}')">Track this angle</button>
+      </div>
+      ${renderTrustPattern(analysisMeta, { title: 'Generated insight', compact: true })}
     </div>`;
-  }).join('') || '<div class="empty">No high-confidence picks today</div>';
+  }).join('') || renderStateEmpty(
+    '🤖',
+    'No high-confidence signals yet',
+    'We do not currently have any markets above the confidence threshold for this view.'
+  );
 }
 
 function aiReasoning(m) {
   if (m.keyFactor && m.keyFactor.length > 10) return m.keyFactor;
   if (m.reasoning && m.reasoning.length > 10) return m.reasoning;
   const reasons = {
-    'AFL': `${m.pick} showing strong recent form. Home ground advantage at ${m.venue}. Line movement suggests sharp money.`,
-    'NRL': `${m.pick} has won 4 of last 5. Opposition missing key players. Expect high scoring.`,
-    'Soccer': `${m.pick} best value at current odds. Expected goals model shows +0.4 edge.`,
-    'UFC': `${m.pick} superior striking accuracy (${m.confidence}% TD defence). Reach advantage significant.`,
-    'Boxing': `${m.pick} better footwork and jab output. Judge tendencies favour aggressive style.`,
-    'NBA': `${m.pick} lead the league in net rating this month. Pace and efficiency edge over opponent.`,
-    'Greyhound': `Box draw advantageous. Recent times 0.3s faster than field average.`,
-    'Horse Racing': `Strong wet track record. Trainer strike rate 28% at this distance.`,
+    'AFL': `${m.pick} rates as the stronger current lean from the available price, venue context, and model view. Open the full card to inspect the specific factors and uncertainty.`,
+    'NRL': `${m.pick} is the current model lean based on price shape and matchup context. Check the full view before acting so late team changes do not get missed.`,
+    'Soccer': `${m.pick} is the current lean from the available market snapshot and matchup setup. Review the detailed card for confidence framing and uncertainty notes.`,
+    'UFC': `${m.pick} is the current lean from the available market inputs. Use the full card to inspect the model rationale rather than treating this as a certainty call.`,
+    'Boxing': `${m.pick} is the stronger model side from the current prices and event context. Open the detailed view for the full interpretation and caveats.`,
+    'NBA': `${m.pick} is the current model lean from the available prices and event context. Review the deeper analysis for confidence framing before logging a position.`,
+    'Greyhound': `${m.pick} is the current projected race lean from barrier, market rank, and field context. Generated race cards should be treated as indicative rather than official.`,
+    'Horse Racing': `${m.pick} is the current race lean from the listed field, distance, and price context. Review the full card before relying on any projected racing data.`,
   };
-  return reasons[m.sport] || 'Analysis based on recent form, head-to-head, and market movement.';
+  return reasons[m.sport] || 'This is a model-led lean from the available inputs. Open the full view to inspect freshness, source labeling, and uncertainty.';
 }
 
 
 function renderTips() {
-  const filtered = UPCOMING.filter(m=>matchesSportFilter(m.sport, currentSport));
+  renderSignalWorkbench('tips-toolbar', 'tips');
+  const filtered = applyAdvancedSignalFilters(UPCOMING.filter(m=>matchesSportFilter(m.sport, currentSport) && m.aiReady));
   const sorted = [...filtered].sort((a,b)=>b.confidence-a.confidence);
 
   // Match of the Day on tips page
@@ -214,7 +578,7 @@ function renderTips() {
 
   // Show loading skeleton cards while odds are loading
   if (!oddsLoaded) {
-    document.getElementById('tips-grid').innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;grid-column:1/-1">${[1,2,3].map(()=>`<div class="loading-shimmer" style="height:330px;border-radius:12px"></div>`).join('')}</div>`;
+    document.getElementById('tips-grid').innerHTML = `<div style="grid-column:1/-1">${renderLoadingStack(3, 340)}</div>`;
     return;
   }
 
@@ -225,7 +589,7 @@ function renderTips() {
       const h2hKey = `${m.home}_${m.away}`;
       const h2h = H2H[h2hKey];
       const isRacingCard = m.sport==='Greyhound'||m.sport==='Horse Racing';
-      return `<div class="card card-accent" style="border-top-color:${sc}">
+      return `<div class="card card-accent signal-card" style="border-top-color:${sc}">
         <div class="card-header">
           <div style="display:flex;align-items:center;gap:8px">
             ${tag(m.sport,sc)}
@@ -243,12 +607,12 @@ function renderTips() {
 
           <!-- AI Recommendation -->
           <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:10px;padding:14px;margin-bottom:14px">
-            <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#10b981;margin-bottom:8px">🤖 AI RECOMMENDATION</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#10b981;margin-bottom:8px">🤖 MODEL VIEW</div>
             <div style="font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px">${m.pick}</div>
-            ${m.valueBet?`<div class="value-bet-badge">💰 VALUE BET DETECTED</div>`:''}
+            ${m.valueBet?`<div class="value-bet-badge">💰 Potential value edge</div>`:''}
             <div class="confidence-bar">
               <div class="confidence-label">
-                <span style="color:var(--muted);font-size:11px">AI Confidence</span>
+                <span style="color:var(--muted);font-size:11px">Signal confidence</span>
                 <span style="color:${confColor(m.confidence)};font-weight:700;font-family:var(--mono)">${m.confidence}%</span>
               </div>
               <div class="conf-track"><div class="conf-fill" style="width:${m.confidence}%;background:${confColor(m.confidence)}"></div></div>
@@ -273,6 +637,12 @@ function renderTips() {
 
           <!-- Analysis -->
           <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">${aiReasoning(m)}</div>
+          <div class="signal-source" style="margin-bottom:14px">
+            <span class="signal-chip">Odds ${oddsFreshnessLabel()}</span>
+            <span class="signal-chip">Generated insight</span>
+            <span class="signal-chip">Track separately</span>
+          </div>
+          ${renderTrustPattern(buildAnalysisTrustMeta(m.analysisMeta || {}, m.confidence), { title: 'Generated insight', compact: true })}
 
           ${h2h?`<!-- H2H -->
           <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px">
@@ -300,6 +670,7 @@ function renderTips() {
 
           <div style="display:flex;gap:8px;margin-top:4px">
             <button class="btn-primary" style="flex:1" onclick="openBetFormWithMatch('${m.id}')">+ LOG BET</button>
+            <button class="btn-secondary" onclick="toggleSavedInsight('${m.id}')" style="white-space:nowrap">${isInsightSaved(m.id) ? '★ Saved' : '☆ Save'}</button>
             <button onclick="openMatchModal('${m.id}')" style="background:rgba(0,91,212,.14);border:1px solid rgba(0,91,212,.45);color:#60a5fa;border-radius:10px;padding:12px 16px;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.background='rgba(0,91,212,.25)'" onmouseout="this.style.background='rgba(0,91,212,.14)'">🏦 BOOKIE</button>
           </div>
         </div>
@@ -308,29 +679,24 @@ function renderTips() {
     attachWeatherInfo();
   } else {
     // Show informative empty state when no tips available
-    document.getElementById('tips-grid').innerHTML = `<div class="empty" style="grid-column:1/-1;padding:60px 20px;text-align:center">
-      <div style="font-size:48px;margin-bottom:16px">🔮</div>
-      <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px">NO AI TIPS AVAILABLE</div>
-      <div style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:20px">
-        We don't have any upcoming matches with AI analysis for the selected sport yet.<br>
-        Check back soon or explore other sports!
-      </div>
-      <div style="display:flex;gap:10px;justify-content:center">
-        <button class="btn-primary" onclick="setSport('all');showPage('tips')" style="padding:10px 20px">View All Sports</button>
-        <button class="btn-secondary" onclick="showPage('upcoming')" style="padding:10px 20px">Browse Upcoming</button>
-      </div>
-    </div>`;
+    document.getElementById('tips-grid').innerHTML = `<div style="grid-column:1/-1">${renderStateEmpty(
+      '🔮',
+      'No AI signals available',
+      'We do not have any upcoming matches with analysis for the current filter yet. Try another sport or browse the market board.',
+      `<button class="btn-primary" onclick="setSport('all');showPage('tips')">View all sports</button><button class="btn-secondary" onclick="showPage('upcoming')">Browse upcoming</button>`
+    )}</div>`;
   }
 }
 
 
 function renderUpcoming() {
+  renderSignalWorkbench('upcoming-toolbar', 'upcoming');
   const sports = ['All', ...new Set(UPCOMING.map(m=>m.sport))];
   const activeSportLabel = currentSport === 'all' ? 'All' : (SPORT_FILTER_MAP[currentSport] || 'All');
   document.getElementById('upcoming-filters').innerHTML = sports.map(s=>
     `<button class="filter-tab${s===activeSportLabel?' active':''}" onclick="filterUpcoming('${s}',this)">${s}</button>`
   ).join('');
-  const filtered = activeSportLabel === 'All' ? UPCOMING : UPCOMING.filter(m=>m.sport===activeSportLabel);
+  const filtered = applyAdvancedSignalFilters(activeSportLabel === 'All' ? UPCOMING : UPCOMING.filter(m=>m.sport===activeSportLabel));
   renderUpcomingTable(filtered);
 }
 
@@ -348,7 +714,7 @@ function filterUpcoming(sport, btn) {
       c.style.background=''; c.style.color='';
     }
   });
-  const filtered = sport==='All' ? UPCOMING : UPCOMING.filter(m=>m.sport===sport);
+  const filtered = applyAdvancedSignalFilters(sport==='All' ? UPCOMING : UPCOMING.filter(m=>m.sport===sport));
   renderUpcomingTable(filtered);
 }
 
@@ -357,7 +723,11 @@ function renderUpcomingTable(matches) {
   if (!container) return;
 
   if (!matches.length) {
-    container.innerHTML = '<div class="empty">No upcoming matches</div>';
+    container.innerHTML = renderStateEmpty(
+      '📆',
+      'No upcoming matches',
+      'There are no scheduled markets for this selection right now.'
+    );
     return;
   }
 
@@ -392,7 +762,7 @@ function renderUpcomingTable(matches) {
     const aiCol = document.createElement('div');
     aiCol.style.textAlign = 'center';
     const conf = typeof m.confidence === 'number' ? m.confidence : 0;
-    aiCol.innerHTML = `<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:4px">AI PICK</div><div style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#10b981">${m.pick || '—'}</div><div style="font-size:11px;color:${confColor(conf)};font-family:var(--mono)">${conf}%</div>`;
+    aiCol.innerHTML = `<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:4px">${m.aiReady ? 'MODEL VIEW' : 'PROJECTED LEAN'}</div><div style="font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#10b981">${m.pick || '—'}</div><div style="font-size:11px;color:${confColor(conf)};font-family:var(--mono)">${conf}% · ${m.aiReady ? 'AI' : 'EST'}</div>`;
 
     // Odds column
     const oddsCol = document.createElement('div');
@@ -401,6 +771,7 @@ function renderUpcomingTable(matches) {
     if (m.homeOdds) oddsHTML += `<div class="mini-odd${m.valueBet && m.pick === m.home ? ' best' : ''}">${m.homeOdds}</div>`;
     if (m.drawOdds) oddsHTML += `<div class="mini-odd">D ${m.drawOdds}</div>`;
     if (m.awayOdds) oddsHTML += `<div class="mini-odd${m.valueBet && m.pick === m.away ? ' best' : ''}">${m.awayOdds}</div>`;
+    oddsHTML += `<button class="mini-odd" onclick="event.stopPropagation();toggleSavedInsight('${m.id}')">${isInsightSaved(m.id) ? '★ Saved' : '☆ Save'}</button>`;
     oddsHTML += `<button class="mini-odd" style="background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.25);color:#10b981" onclick="event.stopPropagation();openBetFormWithMatch('${m.id}')">+ BET</button>`;
     oddsCol.innerHTML = oddsHTML;
 
@@ -515,7 +886,7 @@ function filterBets(sport, btn) {
           <td style="color:var(--muted);font-size:12px;white-space:nowrap">${b.bet||'—'}</td>
           <td style="font-family:var(--mono);font-weight:700">$${b.stake||0}</td>
           <td style="font-family:var(--mono);font-weight:700;color:#f59e0b">${b.odds||'?'}x</td>
-          <td>${pendingBtns}</td>
+          <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">${pendingBtns}<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">${resultStateLabel(b.result || 'PENDING')}</span></div></td>
           <td style="font-family:var(--mono);font-weight:700;color:${pnl>=0?'#10b981':'#ef4444'}">${fmtPnl(pnl)}</td>
           <td>${confCell}</td>
           <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(b.notes||'').replace(/"/g,'&quot;')}">${b.notes||'—'}</td>
@@ -534,12 +905,12 @@ function filterBets(sport, btn) {
 
   if (!out.length) {
     const emptyDiv = document.createElement('div');
-    emptyDiv.className = 'empty';
-    emptyDiv.style.cssText = 'padding:40px;text-align:center';
-    emptyDiv.innerHTML = `<div style="font-size:40px;margin-bottom:12px">📋</div>
-      <div style="font-family:'Oswald',sans-serif;font-size:16px;margin-bottom:8px">NO BETS YET</div>
-      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">Start tracking your bets to see your stats here.</div>
-      <button class="btn-primary" onclick="openBetForm()">+ Log Your First Bet</button>`;
+    emptyDiv.innerHTML = renderStateEmpty(
+      '📋',
+      'No bets tracked yet',
+      'Start logging your bets to build a cleaner performance history and see your analytics populate.',
+      `<button class="btn-primary" onclick="openBetForm()">Log your first bet</button>`
+    );
     cardFrag.appendChild(emptyDiv);
   } else {
     for (const b of out) {
@@ -555,6 +926,12 @@ function filterBets(sport, btn) {
       card.innerHTML = `
         <div class="bet-card-top">${sportTag(b.sport||'—')}<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.date||'—'}</span></div>
         <div class="bet-card-event">${b.event||'—'}</div>
+        <div class="signal-source" style="margin-bottom:10px">
+          ${b.aiRecommended ? '<span class="signal-chip">AI-assisted entry</span>' : '<span class="signal-chip">User-entered bet</span>'}
+          ${b.valueBet ? '<span class="signal-chip">Value flag</span>' : ''}
+          ${b.confidence ? `<span class="signal-chip">${b.confidence}% confidence</span>` : ''}
+          <span class="signal-chip">${resultStateLabel(b.result || 'PENDING')}</span>
+        </div>
         <div class="bet-card-row">
           <span class="bet-card-type">${b.bet||'—'}</span>
           <span class="bet-card-stake">$${b.stake||0}</span>
@@ -562,6 +939,7 @@ function filterBets(sport, btn) {
           ${resultTag(b.result||'PENDING')}
           <span class="bet-card-pnl" style="color:${pnlColor}">${fmtPnl(pnl)}</span>
         </div>
+        ${b.notes ? `<div class="signal-copy" style="margin-top:10px">${b.notes}</div>` : ''}
         ${pendingActions}
         <div style="display:flex;gap:6px;margin-top:8px">
           <button class="action-btn" onclick="openEdit(${b.id})" style="flex:1;padding:8px">✏️ Edit</button>
@@ -576,6 +954,7 @@ function filterBets(sport, btn) {
 
 
 function renderLeaderboard() {
+  renderLeaderboardProfileRail();
   showLbSport(currentLbSport, null);
 }
 
@@ -649,6 +1028,7 @@ function renderAnalysis() {
   const aiRec = bets.filter(b=>b.aiRecommended);
   const aiStats = getStats(aiRec);
   const allStats = getStats(bets);
+  renderAnalysisSummaryHero(allStats, aiStats);
 
   const summaryHtml = `<div class="card"><div class="card-header"><div class="card-title">📊 FULL SUMMARY</div></div><div class="card-body">
     ${[
@@ -669,6 +1049,7 @@ function renderAnalysis() {
   </div></div>`;
 
   document.getElementById('analysis-grid').innerHTML = html + summaryHtml;
+  renderPlanHook();
 }
 
 
@@ -690,13 +1071,13 @@ function getMatchOfTheDay() {
   if (!best) return null;
   // Build "why this is MOTD" reasons
   const reasons = [];
-  if ((best.confidence||0) >= 75) reasons.push({ icon:'🎯', text:'High AI Confidence' });
-  if (best.valueBet)              reasons.push({ icon:'⚡', text:'Value Odds Detected' });
-  if (best.aiReady)               reasons.push({ icon:'🤖', text:'Full AI Analysis Ready' });
+  if ((best.confidence||0) >= 75) reasons.push({ icon:'🎯', text:'High signal confidence' });
+  if (best.valueBet)              reasons.push({ icon:'⚡', text:'Possible value gap' });
+  if (best.aiReady)               reasons.push({ icon:'🤖', text:'Full model view ready' });
   const ha = best.hoursAway ?? ((new Date(best.commenceTime) - Date.now()) / 3600000);
   if (ha > 0 && ha < 6)          reasons.push({ icon:'⏰', text:'Starting Very Soon' });
   else if (ha > 0 && ha < 24)    reasons.push({ icon:'📅', text:'Today\'s Match' });
-  if ((best.confidence||0) >= 85) reasons.push({ icon:'🔥', text:'Strong Betting Angle' });
+  if ((best.confidence||0) >= 85) reasons.push({ icon:'🔥', text:'Stronger model conviction' });
   best.motdReasons = reasons;
   return best;
 }
@@ -726,17 +1107,17 @@ function renderMOTD(containerId) {
           ${ai?.summary ? `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:6px;max-width:520px">${ai.summary}</div>` : ''}
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">AI CONFIDENCE</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">SIGNAL CONFIDENCE</div>
           <div class="conf-pulse" style="font-family:var(--mono);font-size:28px;font-weight:700;color:${confColor(m.confidence)}">${m.confidence}%</div>
         </div>
       </div>
       <div class="motd-pick-row">
         <div class="motd-pick">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🤖 AI PICK</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🤖 MODEL LEAN</div>
           <div style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#10b981">${m.pick}</div>
           ${oddsVal ? `<div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:2px">@ ${oddsVal}x</div>` : ''}
         </div>
-        ${m.valueBet ? `<div class="value-bet-badge">💰 VALUE BET DETECTED</div>` : ''}
+        ${m.valueBet ? `<div class="value-bet-badge">💰 Potential value edge</div>` : ''}
         <button onclick="event.stopPropagation();openQuickBet('${m.id}')" style="background:linear-gradient(135deg,#10b981,#059669);color:#000;border:none;border-radius:10px;padding:10px 20px;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer">+ BET THIS</button>
       </div>
     </div>`;
@@ -921,21 +1302,22 @@ function shareAIPick(matchId) {
       : `${m.home || '?'} vs ${m.away || '?'}`;
 
     const lines = [
-      '🤖 THE EDGE AI PICK',
+      '🤖 EDGEIQ MODEL LEAN',
       '',
       `${m.sport || 'Sport'} · ${m.time || 'TBC'}`,
       matchLine,
       '',
-      `✅ PICK: ${m.pick || '—'}${oddsVal ? ` @ ${oddsVal}x` : ''}`,
-      typeof m.confidence === 'number' ? `📊 CONFIDENCE: ${m.confidence}%` : '',
-      m.valueBet ? '⚡ VALUE BET DETECTED' : '',
+      `✅ Lean: ${m.pick || '—'}${oddsVal ? ` @ ${oddsVal}x` : ''}`,
+      typeof m.confidence === 'number' ? `📊 Signal confidence: ${m.confidence}%` : '',
+      m.valueBet ? '⚡ Possible value edge flagged' : '',
       ai.summary ? `\n${ai.summary}` : '',
+      '\nThis is generated insight, not a guaranteed result.',
       '',
       'edgebets.net'
     ].filter(Boolean).join('\n');
 
     if (navigator.share) {
-      navigator.share({ title: 'The Edge AI Pick', text: lines }).catch(() => {});
+      navigator.share({ title: 'EdgeIQ Model Lean', text: lines }).catch(() => {});
     } else if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(lines)
         .then(() => showToast('📋 Copied to clipboard!'))

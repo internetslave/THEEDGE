@@ -8,6 +8,11 @@ let deleteId = null;
 let currentSport = 'all';
 let currentBetFilter = 'ALL';
 let currentLbSport = 'overall';
+let advancedSignalFilters = {
+  confidence: 'all',
+  edge: 'all',
+  freshness: 'all',
+};
 
 // Odds state
 let UPCOMING = [];
@@ -17,6 +22,12 @@ let oddsLastUpdated = null;
 let oddsNextRefresh = 21600;
 let oddsPollTimer = null;
 let oddsCreditsRemaining = null;
+let oddsFreshnessStatus = 'loading';
+let oddsFreshnessText = 'Awaiting market snapshot';
+let oddsWarnings = [];
+let oddsSources = [];
+let oddsAsOf = null;
+let oddsGeneratedAt = null;
 
 // Idle
 let _lastActivity = Date.now();
@@ -24,6 +35,7 @@ let _lastActivity = Date.now();
 // Auth
 const TOKEN_KEY = 'edgeiq-token-v2';
 let currentUser = null;
+let savedInsights = [];
 
 // UI state
 let quickBetMatch = null;
@@ -31,6 +43,7 @@ let betSearchQuery = '';
 let toastTimer = null;
 let _factTimer = null;
 let _factIdx = 0;
+let onboardingDismissed = false;
 
 // Bookie sheet
 let _bookieMatchId = null;
@@ -44,6 +57,8 @@ const weatherCache = {};
 const SLIP_KEY = 'edgeiq-slip';
 const DISCLAIMER_KEY = 'edgeiq-disclaimer-v1';
 const BOOKIE_PREF_KEY = 'edgeiq-preferred-bookie';
+const SAVED_INSIGHTS_KEY = 'edgeiq-saved-insights-v1';
+const ONBOARDING_KEY = 'edgeiq-onboarding-dismissed-v1';
 
 // Roster pools — populated from /api/rosters on init, fallback to empty arrays
 let AFL_FWDS  = [];
