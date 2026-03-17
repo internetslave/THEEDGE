@@ -18,7 +18,10 @@ function parseTrustProxy(value) {
 
 function resolveStorageMode() {
   const requested = String(process.env.EDGEIQ_STORAGE_MODE || '').trim().toLowerCase();
-  if (requested === 'postgres' || requested === 'memory') return requested;
+  if (requested === 'memory') return 'memory';
+  if (requested === 'postgres') {
+    return process.env.DATABASE_URL ? 'postgres' : 'memory';
+  }
   if (process.env.DATABASE_URL) return 'postgres';
   return 'memory';
 }
@@ -44,6 +47,7 @@ export const env = {
 };
 
 export function validateEnvironment(logger = console) {
+  const requestedStorageMode = String(process.env.EDGEIQ_STORAGE_MODE || '').trim().toLowerCase();
   if (!env.ODDS_API_KEY) logger.warn?.('config.missing_optional_secret', { key: 'ODDS_API_KEY', impact: 'live_odds_unavailable' });
   if (!env.ANTHROPIC_API_KEY) logger.warn?.('config.missing_optional_secret', { key: 'ANTHROPIC_API_KEY', impact: 'ai_analysis_unavailable' });
   if (!env.RACING_API_USER || !env.RACING_API_PASS) {
@@ -52,8 +56,13 @@ export function validateEnvironment(logger = console) {
       impact: 'generated_racing_fallback_only',
     });
   }
-  if (env.EDGEIQ_STORAGE_MODE === 'postgres' && !env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required when EDGEIQ_STORAGE_MODE=postgres');
+  if (requestedStorageMode === 'postgres' && !env.DATABASE_URL) {
+    logger.warn?.('config.storage_mode_fallback', {
+      requestedStorageMode: 'postgres',
+      resolvedStorageMode: env.EDGEIQ_STORAGE_MODE,
+      reason: 'database_url_missing',
+      nodeEnv: env.NODE_ENV,
+    });
   }
   if (env.EDGEIQ_STORAGE_MODE === 'memory') {
     logger.warn?.('config.degraded_storage_mode', {
