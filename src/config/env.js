@@ -19,7 +19,7 @@ function parseTrustProxy(value) {
 function resolveStorageMode() {
   const requested = String(process.env.EDGEIQ_STORAGE_MODE || '').trim().toLowerCase();
   if (requested === 'postgres' || requested === 'memory') return requested;
-  if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production') return 'postgres';
+  if (process.env.DATABASE_URL) return 'postgres';
   return 'memory';
 }
 
@@ -59,6 +59,7 @@ export function validateEnvironment(logger = console) {
     logger.warn?.('config.degraded_storage_mode', {
       storageMode: 'memory',
       impact: 'non_persistent_runtime_state',
+      nodeEnv: env.NODE_ENV,
     });
   }
   if (!env.SESSION_SECRET || env.SESSION_SECRET === 'edgeiq-fallback-secret-change-me') {
