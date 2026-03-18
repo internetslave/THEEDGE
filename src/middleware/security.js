@@ -40,6 +40,7 @@ export function applyCoreMiddleware(app, publicDir) {
     const isAllowed = !origin
       || ALLOWED_ORIGINS.has(origin)
       || (allowDevOrigins && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin))
+      || (allowDevOrigins && origin.endsWith('.trycloudflare.com'))
       || (allowDevOrigins && origin.endsWith('.replit.app'))
       || (allowDevOrigins && origin.endsWith('.repl.co'));
 
